@@ -1,0 +1,12 @@
+# src/Resources/config/services.yaml (dans ton bundle)
+services:
+#  _defaults:
+#    autowire: true
+#    autoconfigure: true
+#    public: false
+
+  Davidannebicque\HtmlToSpreadsheetBundle\:
+    resource: '../../*'
+    exclude: '../../{DependencyInjection,Resources,Tests}'
+    autowire: true
+    autoconfigure: true

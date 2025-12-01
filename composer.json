@@ -1,0 +1,27 @@
+{
+  "name": "davidannebicque/html-to-spreadsheet-bundle",
+  "type": "symfony-bundle",
+  "require": {
+    "phpoffice/phpspreadsheet": "^5.2",
+    "symfony/dependency-injection": "^7.3|^8.0",
+    "symfony/framework-bundle": "^7.3|^8.0",
+    "symfony/config": "^7.3|^8.0",
+    "symfony/http-foundation": "^7.3|^8.0",
+    "symfony/console": "^7.3|^8.0",
+    "symfony/twig-bundle": "^7.3|^8.0",
+    "ext-dom": "*",
+    "ext-libxml": "*"
+  },
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Davidannebicque\\HtmlToSpreadsheetBundle\\": "src/"
+    }
+  },
+  "authors": [
+    {
+      "name": "davidannebicque",
+      "email": "david.annebicque@gmail.com"
+    }
+  ]
+}
