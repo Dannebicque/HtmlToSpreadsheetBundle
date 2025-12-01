@@ -1,6 +1,49 @@
-# Exemple d'usage du bundle
+# HtmlToSpreadsheetBundle
 
-## Contrôleur
+[![Latest Version](https://img.shields.io/packagist/v/davidannebicque/html-to-spreadsheet-bundle.svg)](https://packagist.org/packages/davidannebicque/html-to-spreadsheet-bundle)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Symfony](https://img.shields.io/badge/Symfony-7.3/8.x-black.svg)](https://symfony.com)
+[![PhpSpreadsheet](https://img.shields.io/badge/PhpSpreadsheet-5.x-yellow.svg)](https://github.com/PHPOffice/PhpSpreadsheet)
+
+## Warning
+
+First draft of a Symfony bundle to convert HTML tables into Excel (.xlsx), OpenDocument (.ods) or CSV. WIP. 
+
+---
+
+Convert **annotated HTML tables** into **Excel (.xlsx), OpenDocument (.ods)** or **CSV** using a simple, declarative syntax.
+
+This bundle is ideal for developers who want to use **Twig + HTML** as a DSL to build spreadsheets, without directly using the PhpSpreadsheet API.
+
+---
+
+## Requirements
+
+- PHP 8.2+
+- Symfony 7.3+
+- PhpSpreadsheet 5.x (maybe 3 or 4 also compatible, not tested)
+
+## ✨ Features
+
+- ✔️ Write spreadsheets using **HTML tables** and `data-xls-*` attributes
+- ✔️ Auto-generation of **Excel sheets**, **styles**, **formulas**, **freezepanes**, **column widths**, **images**, etc.
+- ✔️ Built-in **French-oriented presets** (`money`, `date`, `float2`, `percent2`, etc.)
+- ✔️ Generate XLSX, ODS, CSV
+- ✔️ Multiple sheets from multiple `<table data-xls-sheet="...">` tags
+- ✔️ Strict mode (invalid attributes → exception)
+- ✔️ Fully extensible (register custom styles, validators, etc.)
+
+---
+
+## Installation
+
+```bash
+composer require davidannebicque/html-to-spreadsheet-bundle
+```
+
+## Example
+
+### Contrôleur
 
 ```php
 <?php
@@ -47,7 +90,7 @@ final class DemoController extends AbstractController
 }
 ```
 
-## La vue (twig)
+### La vue (twig)
 
 ```twig
 {# templates/test/export.html.twig #}
@@ -132,5 +175,4 @@ final class DemoController extends AbstractController
     </tbody>
   </table>
 </div>
-
 ```
