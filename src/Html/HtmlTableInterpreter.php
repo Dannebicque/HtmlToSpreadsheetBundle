@@ -5,12 +5,12 @@ namespace Davidannebicque\HtmlToSpreadsheetBundle\Html;
 use Davidannebicque\HtmlToSpreadsheetBundle\Spreadsheet\Styler\SheetStyler;
 use Davidannebicque\HtmlToSpreadsheetBundle\Spreadsheet\Styler\StyleRegistry;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 final class HtmlTableInterpreter
 {
     public function __construct(
-        private readonly StyleRegistry $styles,
         private readonly SheetStyler $styler,
         private readonly AttributeValidator $validator,
     ) {}
@@ -19,6 +19,17 @@ final class HtmlTableInterpreter
     {
         $dom = new \DOMDocument('1.0', 'UTF-8');
         @$dom->loadHTML($html, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
+        if (!mb_detect_encoding($html, 'UTF-8', true)) {
+            $html = mb_convert_encoding($html, 'UTF-8');
+        }
+
+        // 2) On “annonce” clairement l'UTF-8 au parser HTML
+        $htmlWithMeta = '<!DOCTYPE html><html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/></head><body>'
+            .$html.
+            '</body></html>';
+
+        @$dom->loadHTML($htmlWithMeta, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
+
         $xp = new \DOMXPath($dom);
 
         $tables = $xp->query('//table[@data-xls-sheet]');
@@ -31,7 +42,9 @@ final class HtmlTableInterpreter
         $wb->removeSheetByIndex(0);
 
         foreach ($tables as $idx => $tbl) {
+
             $sheetName = $tbl->getAttribute('data-xls-sheet');
+            $sheetName = $this->safeTabName($sheetName);
             $sheet = new Worksheet($wb, $sheetName);
             $wb->addSheet($sheet, $idx);
 
@@ -67,8 +80,8 @@ final class HtmlTableInterpreter
             'data-xls-print-orientation' => function ($v) use ($sheet) {
                 $o = $sheet->getPageSetup();
                 $o->setOrientation($v === 'landscape'
-                    ? \PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE
-                    : \PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_PORTRAIT);
+                    ? PageSetup::ORIENTATION_LANDSCAPE
+                    : PageSetup::ORIENTATION_PORTRAIT);
             },
             'data-xls-print-fit' => function ($v) use ($sheet) {
                 $ps = $sheet->getPageSetup();
@@ -202,8 +215,7 @@ final class HtmlTableInterpreter
         // FR: "1 234,56" | EN: "1,234.56"
         $v = trim($v);
         if ($locale === 'fr-FR') {
-            $v = str_replace([' ', ' '], '', $v);
-            $v = str_replace(',', '.', $v);
+            $v = str_replace(array(' ', ' ', ','), array('', '', '.'), $v);
             return (float)$v;
         }
         // défaut EN-like
@@ -222,5 +234,21 @@ final class HtmlTableInterpreter
                 }
             }
         }
+    }
+
+    /**
+     * @param $sheetName
+     * @return string
+     */
+    private function safeTabName($sheetName): string
+    {
+        $sheetName = html_entity_decode($sheetName, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        if (extension_loaded('intl') && class_exists(\Normalizer::class)) {
+            $sheetName = \Normalizer::normalize($sheetName, \Normalizer::FORM_C);
+        }
+        $sheetName = str_replace([':', '\\', '/', '?', '*', '[', ']'], '', $sheetName);
+        $sheetName = trim($sheetName) ?: 'Sheet';
+        $sheetName = mb_substr($sheetName, 0, 31, 'UTF-8');
+        return $sheetName;
     }
 }
