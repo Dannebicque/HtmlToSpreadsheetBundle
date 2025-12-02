@@ -2,8 +2,8 @@
 
 [![Latest Version](https://img.shields.io/packagist/v/davidannebicque/html-to-spreadsheet-bundle.svg)](https://packagist.org/packages/davidannebicque/html-to-spreadsheet-bundle)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Symfony](https://img.shields.io/badge/Symfony-7.3/8.x-black.svg)](https://symfony.com)
-[![PhpSpreadsheet](https://img.shields.io/badge/PhpSpreadsheet-5.x-yellow.svg)](https://github.com/PHPOffice/PhpSpreadsheet)
+[![Symfony](https://img.shields.io/badge/Symfony-7.x/8.x-black.svg)](https://symfony.com)
+[![PhpSpreadsheet](https://img.shields.io/badge/PhpSpreadsheet-4.x/5.x-yellow.svg)](https://github.com/PHPOffice/PhpSpreadsheet)
 
 ## Warning
 
@@ -21,7 +21,7 @@ This bundle is ideal for developers who want to use **Twig + HTML** as a DSL to 
 
 - PHP 8.2+
 - Symfony 7.3+
-- PhpSpreadsheet 5.x (maybe 3 or 4 also compatible, not tested)
+- PhpSpreadsheet 4.x|5.x (maybe 3  also compatible, not tested)
 
 ## ✨ Features
 

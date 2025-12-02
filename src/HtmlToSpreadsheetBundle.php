@@ -10,7 +10,7 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigura
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
 
-final class DavidannebicqueHtmlToSpreadsheetBundle extends AbstractBundle
+final class HtmlToSpreadsheetBundle extends AbstractBundle
 {
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
