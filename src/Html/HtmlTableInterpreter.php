@@ -4,6 +4,7 @@ namespace Davidannebicque\HtmlToSpreadsheetBundle\Html;
 
 use Davidannebicque\HtmlToSpreadsheetBundle\Spreadsheet\Styler\SheetStyler;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Style;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
@@ -55,7 +56,7 @@ final class HtmlTableInterpreter
 
             // rows & cells
             $rowIndex = 1;
-            foreach ($xp->query('./thead/tr|./tbody/tr|./tfoot/tr', $tbl) as $tr) {
+            foreach ($xp->query('./thead/tr|./tbody/tr|./tfoot/tr|./tr', $tbl) as $tr) {
                 $this->applyRow($sheet, $tr, $rowIndex, $options);
                 $rowIndex++;
             }
@@ -143,17 +144,24 @@ final class HtmlTableInterpreter
             $numberLocale = $cellNode->getAttribute('data-xls-number-locale') ?: $opt->numberLocale;
 
             $formula = $cellNode->getAttribute('data-xls-formula');
-            if ($formula !== '') {
+            $img = $cellNode->getAttribute('data-xls-image');
+
+            if ($formula !== '' && $cellNode->hasAttribute('data-xls-formula')) {
                 if ($formula[0] !== '=') $formula = "=".$formula;
                 $sheet->setCellValue($coord, $formula);
-            } elseif ($img = $cellNode->getAttribute('data-xls-image')) {
+            } elseif ($img !== '' && $cellNode->hasAttribute('data-xls-image')) {
                 $this->insertImage($sheet, $coord, $img,
                     (int)($cellNode->getAttribute('data-xls-img-width') ?: 0),
                     (int)($cellNode->getAttribute('data-xls-img-height') ?: 0)
                 );
             } else {
                 $typed = $this->castValue($value, $forcedType, $numberLocale);
-                $sheet->setCellValue($coord, $typed);
+                // Si le type est forcé à 'string', utiliser setCellValueExplicit pour éviter la conversion automatique
+                if ($forcedType === 'string') {
+                    $sheet->setCellValueExplicit($coord, $typed, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+                } else {
+                    $sheet->setCellValue($coord, $typed);
+                }
             }
 
             // Style
@@ -171,6 +179,65 @@ final class HtmlTableInterpreter
             if ($cm = $cellNode->getAttribute('data-xls-comment')) $sheet->getComment($coord)->getText()->createTextRun($cm);
             if ($dv = $cellNode->getAttribute('data-xls-dv-list')) {
                 $this->styler->applyListValidation($sheet, $coord, explode('|', $dv));
+            }
+
+            // New attributes: background color, font size, borders, protection
+            if ($bgColor = $cellNode->getAttribute('data-xls-bg-color')) {
+                $sheet->getStyle($coord)->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB(ltrim($bgColor, '#'));
+            }
+            if ($fontSize = $cellNode->getAttribute('data-xls-font-size')) {
+                $sheet->getStyle($coord)->getFont()->setSize((float)$fontSize);
+            }
+            if ($border = $cellNode->getAttribute('data-xls-border')) {
+                $borderStyle = match($border) {
+                    'thin' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'medium' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM,
+                    'thick' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THICK,
+                    'none' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_NONE,
+                    default => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                };
+                $borderColor = $cellNode->getAttribute('data-xls-border-color') ?: '000000';
+                $sheet->getStyle($coord)->applyFromArray([
+                    'borders' => [
+                        'allBorders' => [
+                            'borderStyle' => $borderStyle,
+                            'color' => ['rgb' => ltrim($borderColor, '#')],
+                        ],
+                    ],
+                ]);
+            }
+            if ($locked = $cellNode->getAttribute('data-xls-locked')) {
+                $sheet->getStyle($coord)->getProtection()->setLocked($locked === 'true');
+            }
+
+            // Priority 2 attributes: Font styling
+            if ($fontColor = $cellNode->getAttribute('data-xls-font-color')) {
+                $sheet->getStyle($coord)->getFont()->getColor()->setRGB(ltrim($fontColor, '#'));
+            }
+            if ($cellNode->hasAttribute('data-xls-font-bold') && $cellNode->getAttribute('data-xls-font-bold') === 'true') {
+                $sheet->getStyle($coord)->getFont()->setBold(true);
+            }
+            if ($cellNode->hasAttribute('data-xls-font-italic') && $cellNode->getAttribute('data-xls-font-italic') === 'true') {
+                $sheet->getStyle($coord)->getFont()->setItalic(true);
+            }
+            if ($underline = $cellNode->getAttribute('data-xls-font-underline')) {
+                $underlineStyle = match($underline) {
+                    'single' => \PhpOffice\PhpSpreadsheet\Style\Font::UNDERLINE_SINGLE,
+                    'double' => \PhpOffice\PhpSpreadsheet\Style\Font::UNDERLINE_DOUBLE,
+                    'none' => \PhpOffice\PhpSpreadsheet\Style\Font::UNDERLINE_NONE,
+                    default => \PhpOffice\PhpSpreadsheet\Style\Font::UNDERLINE_NONE,
+                };
+                $sheet->getStyle($coord)->getFont()->setUnderline($underlineStyle);
+            }
+            if ($fontName = $cellNode->getAttribute('data-xls-font-name')) {
+                $sheet->getStyle($coord)->getFont()->setName($fontName);
+            }
+
+            // Priority 2 attributes: Conditional formatting
+            if ($conditional = $cellNode->getAttribute('data-xls-conditional')) {
+                $this->applyConditionalFormatting($sheet, $coord, $conditional);
             }
 
             // Fusionner si besoin
@@ -233,6 +300,144 @@ final class HtmlTableInterpreter
                 }
             }
         }
+    }
+
+    /**
+     * Résout le chemin de l'image. Supporte :
+     * - Les chemins de fichiers locaux
+     * - Les data-URI (base64)
+     * - Les URLs distantes (HTTP/HTTPS)
+     */
+    private function resolveImagePath(string $src): string
+    {
+        // Si c'est un chemin absolu qui existe, on le retourne directement
+        if (file_exists($src)) {
+            return $src;
+        }
+
+        // Si c'est une data-URI (data:image/png;base64,...)
+        if (str_starts_with($src, 'data:')) {
+            // Extraire le type et les données
+            if (preg_match('/^data:image\/(\w+);base64,(.+)$/', $src, $matches)) {
+                $extension = $matches[1];
+                $data = base64_decode($matches[2]);
+
+                // Créer un fichier temporaire
+                $tmpFile = tempnam(sys_get_temp_dir(), 'xls_img_') . '.' . $extension;
+                file_put_contents($tmpFile, $data);
+
+                return $tmpFile;
+            }
+        }
+
+        // Si c'est une URL HTTP/HTTPS
+        if (preg_match('/^https?:\/\//i', $src)) {
+            // Extraire l'extension depuis l'URL (ou utiliser jpg par défaut)
+            $extension = 'jpg';
+            if (preg_match('/\.([a-z]{3,4})(?:\?|$)/i', $src, $matches)) {
+                $extension = strtolower($matches[1]);
+            }
+
+            // Télécharger l'image dans un fichier temporaire
+            $tmpFile = tempnam(sys_get_temp_dir(), 'xls_img_') . '.' . $extension;
+            $imageData = @file_get_contents($src);
+
+            if ($imageData === false) {
+                throw new \InvalidArgumentException("Impossible de télécharger l'image: $src");
+            }
+
+            file_put_contents($tmpFile, $imageData);
+            return $tmpFile;
+        }
+
+        // Si le chemin n'existe pas, on lance une exception
+        throw new \InvalidArgumentException("Image introuvable: $src");
+    }
+
+    /**
+     * Applique un formatage conditionnel à une cellule.
+     * Syntaxe: "condition|style"
+     * Exemples:
+     * - "value>100|bg:red|font:white"
+     * - "value<0|bg:FF0000"
+     * - "between:0:100|bg:green"
+     */
+    private function applyConditionalFormatting(Worksheet $sheet, string $coord, string $conditional): void
+    {
+        // Parser la syntaxe : condition|style1|style2...
+        $parts = explode('|', $conditional);
+        if (count($parts) < 2) {
+            return; // Format invalide, on ignore silencieusement
+        }
+
+        $conditionStr = array_shift($parts);
+
+        // Parser la condition
+        $condition = null;
+        if (preg_match('/^value\s*([><=!]+)\s*(.+)$/', $conditionStr, $matches)) {
+            $operator = $matches[1];
+            $value = $matches[2];
+
+            // Créer la condition
+            $condition = new \PhpOffice\PhpSpreadsheet\Style\Conditional();
+            $condition->setConditionType(\PhpOffice\PhpSpreadsheet\Style\Conditional::CONDITION_CELLIS);
+
+            $operatorType = match($operator) {
+                '>' => \PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_GREATERTHAN,
+                '>=' => \PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_GREATERTHANOREQUAL,
+                '<' => \PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_LESSTHAN,
+                '<=' => \PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_LESSTHANOREQUAL,
+                '==' , '=' => \PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_EQUAL,
+                '!=' => \PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_NOTEQUAL,
+                default => null,
+            };
+
+            if ($operatorType) {
+                $condition->setOperatorType($operatorType);
+                $condition->addCondition($value);
+            }
+        } elseif (preg_match('/^between:(.+):(.+)$/', $conditionStr, $matches)) {
+            $min = $matches[1];
+            $max = $matches[2];
+
+            $condition = new \PhpOffice\PhpSpreadsheet\Style\Conditional();
+            $condition->setConditionType(\PhpOffice\PhpSpreadsheet\Style\Conditional::CONDITION_CELLIS);
+            $condition->setOperatorType(\PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_BETWEEN);
+            $condition->addCondition($min);
+            $condition->addCondition($max);
+        }
+
+        if (!$condition) {
+            return; // Condition invalide
+        }
+
+        // Parser les styles
+        $styleArray = [];
+        foreach ($parts as $stylePart) {
+            if (preg_match('/^bg:(.+)$/', $stylePart, $matches)) {
+                $styleArray['fill'] = [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => ltrim($matches[1], '#')],
+                ];
+            } elseif (preg_match('/^font:(.+)$/', $stylePart, $matches)) {
+                $styleArray['font'] = [
+                    'color' => ['rgb' => ltrim($matches[1], '#')],
+                ];
+            } elseif (preg_match('/^bold$/', $stylePart)) {
+                $styleArray['font']['bold'] = true;
+            }
+        }
+
+        if (!empty($styleArray)) {
+            $style = new Style(false, true); // isConditional = true
+            $style->applyFromArray($styleArray);
+            $condition->setStyle($style);
+        }
+
+        // Appliquer la condition
+        $conditionalStyles = $sheet->getStyle($coord)->getConditionalStyles();
+        $conditionalStyles[] = $condition;
+        $sheet->getStyle($coord)->setConditionalStyles($conditionalStyles);
     }
 
     /**

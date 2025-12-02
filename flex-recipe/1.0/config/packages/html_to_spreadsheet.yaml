@@ -1,0 +1,23 @@
+# See full configuration options at:
+# https://github.com/Davidannebicque/HtmlToSpreadsheetBundle
+
+html_to_spreadsheet:
+    # Enable strict mode for HTML validation (throws exceptions for invalid attributes)
+    strict: true
+
+    # Include built-in style presets (th, money, date, percent2, etc.)
+    include_builtins: true
+
+    # Define your custom styles
+    # default_styles:
+    #     custom_header:
+    #         font:
+    #             bold: true
+    #             color: 'FFFFFF'
+    #         fill:
+    #             fillType: 'solid'
+    #             startColor:
+    #                 rgb: '4472C4'
+    #         alignment:
+    #             horizontal: 'center'
+    #             vertical: 'center'
