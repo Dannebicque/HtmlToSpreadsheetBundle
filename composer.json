@@ -12,8 +12,8 @@
   "description": "A Symfony bundle to convert HTML tables to Excel spreadsheets using PhpSpreadsheet.",
   "require": {
     "phpoffice/phpspreadsheet": "^4.0 || ^5.0",
-    "symfony/dependency-injection": "^7.x || ^8.x",
-    "symfony/framework-bundle": "^7.x || ^8.x",
+    "symfony/dependency-injection": "^7.0 || ^8.0",
+    "symfony/framework-bundle": "^7.0 || ^8.0",
     "symfony/config": "^7.0 || ^8.0",
     "symfony/http-foundation": "^7.0 || ^8.0",
     "symfony/console": "^7.0 || ^8.0",
