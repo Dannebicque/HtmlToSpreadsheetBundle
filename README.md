@@ -62,6 +62,96 @@ This bundle is ideal for developers who want to use **Twig + HTML** as a DSL to 
 </td>
 ```
 
+## Cell Merging
+
+Merge cells horizontally (colspan) or vertically (rowspan), or both simultaneously.
+
+### Attributes
+
+- `data-xls-colspan="N"` - Merge N columns horizontally
+- `data-xls-rowspan="N"` - Merge N rows vertically
+
+### Examples
+
+**Horizontal Merging (Colspan):**
+```html
+<!-- Merge 3 columns -->
+<tr>
+    <td data-xls-colspan="3">Merged Header</td>
+</tr>
+<tr>
+    <td>A</td>
+    <td>B</td>
+    <td>C</td>
+</tr>
+```
+
+**Vertical Merging (Rowspan):**
+```html
+<!-- Merge 2 rows -->
+<tr>
+    <td data-xls-rowspan="2">Category</td>
+    <td>Item 1</td>
+</tr>
+<tr>
+    <td>Item 2</td>
+</tr>
+```
+
+**Combined Merging:**
+```html
+<!-- Merge 2 columns and 2 rows (2x2 block) -->
+<tr>
+    <td data-xls-rowspan="2" data-xls-colspan="2">
+        Large Block
+    </td>
+    <td>C1</td>
+</tr>
+<tr>
+    <td>C2</td>
+</tr>
+```
+
+**Complex Table Example:**
+```html
+<table data-xls-sheet="Report">
+    <thead>
+        <tr>
+            <th data-xls-colspan="2" data-xls-bg-color="#4472C4">Q1 Results</th>
+            <th data-xls-colspan="2" data-xls-bg-color="#70AD47">Q2 Results</th>
+        </tr>
+        <tr>
+            <th>Revenue</th><th>Profit</th>
+            <th>Revenue</th><th>Profit</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td data-xls-rowspan="2" data-xls-align="center">North</td>
+            <td>100K</td><td>20K</td>
+            <td>120K</td><td>25K</td>
+        </tr>
+        <tr>
+            <td>110K</td><td>22K</td>
+            <td>130K</td><td>28K</td>
+        </tr>
+    </tbody>
+</table>
+```
+
+### Combining with Styling
+
+Merged cells can be styled like any other cell:
+
+```html
+<td data-xls-rowspan="3"
+    data-xls-bg-color="#FFCC00"
+    data-xls-font-bold="true"
+    data-xls-align="center">
+    Styled Merged Cell
+</td>
+```
+
 ## Font Styling
 
 Control font appearance with these attributes:
