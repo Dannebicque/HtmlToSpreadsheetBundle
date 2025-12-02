@@ -1,14 +1,23 @@
 {
   "name": "davidannebicque/html-to-spreadsheet-bundle",
   "type": "symfony-bundle",
+  "keywords": [
+    "symfony",
+    "bundle",
+    "html",
+    "excel",
+    "spreadsheet",
+    "phpspreadsheet"
+  ],
+  "description": "A Symfony bundle to convert HTML tables to Excel spreadsheets using PhpSpreadsheet.",
   "require": {
-    "phpoffice/phpspreadsheet": "^5.2",
-    "symfony/dependency-injection": "^7.3|^8.0",
-    "symfony/framework-bundle": "^7.3|^8.0",
-    "symfony/config": "^7.3|^8.0",
-    "symfony/http-foundation": "^7.3|^8.0",
-    "symfony/console": "^7.3|^8.0",
-    "symfony/twig-bundle": "^7.3|^8.0",
+    "phpoffice/phpspreadsheet": "^4.0|^5.0",
+    "symfony/dependency-injection": "^7.0|^8.0",
+    "symfony/framework-bundle": "^7.0|^8.0",
+    "symfony/config": "^7.0|^8.0",
+    "symfony/http-foundation": "^7.0|^8.0",
+    "symfony/console": "^7.0|^8.0",
+    "symfony/twig-bundle": "^7.0|^8.0",
     "ext-dom": "*",
     "ext-libxml": "*"
   },
@@ -23,5 +32,7 @@
       "name": "davidannebicque",
       "email": "david.annebicque@gmail.com"
     }
-  ]
+  ],
+  "minimum-stability": "stable",
+  "prefer-stable": true
 }
