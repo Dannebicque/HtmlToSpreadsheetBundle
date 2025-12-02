@@ -26,6 +26,7 @@ This bundle is ideal for developers who want to use **Twig + HTML** as a DSL to 
 ## Features
 
 - Write spreadsheets using **HTML tables** and `data-xls-*` attributes
+- **One-liner rendering** with `SpreadsheetRenderer` service or `SpreadsheetTrait` for controllers
 - Auto-generation of **Excel sheets**, **styles**, **formulas**, **freezepanes**, **column widths**, **images**, etc.
 - Built-in **French-oriented presets** (`money`, `date`, `float2`, `percent2`, etc.)
 - Generate **XLSX**, **ODS**, **CSV** with multi-format export support
@@ -217,6 +218,74 @@ Apply dynamic formatting based on cell values using a simple syntax:
 </td>
 ```
 
+## Cell Comments
+
+Add comments (notes) to cells to provide additional information, instructions, or context. Comments appear as small indicators in cells and display when hovering over them in Excel/LibreOffice.
+
+### Attributes
+
+- `data-xls-comment="text"` - Comment text (required)
+- `data-xls-comment-author="name"` - Comment author name (optional)
+- `data-xls-comment-width="pixels"` - Comment box width in pixels (optional)
+- `data-xls-comment-height="pixels"` - Comment box height in pixels (optional)
+- `data-xls-comment-visible="true"` - Make comment always visible (optional, default: false)
+
+### Examples
+
+**Basic comment:**
+```html
+<td data-xls-comment="This cell needs review">
+    Important data
+</td>
+```
+
+**Comment with author:**
+```html
+<td data-xls-comment="Please verify this value"
+    data-xls-comment-author="John Doe">
+    1,234.56
+</td>
+```
+
+**Comment with custom dimensions:**
+```html
+<td data-xls-comment="This is a longer comment that requires more space to display properly"
+    data-xls-comment-width="300"
+    data-xls-comment-height="100">
+    Complex data
+</td>
+```
+
+**Always visible comment:**
+```html
+<td data-xls-comment="IMPORTANT: Read this first"
+    data-xls-comment-visible="true">
+    Critical value
+</td>
+```
+
+**Complete example with all attributes:**
+```html
+<table data-xls-sheet="Review">
+    <tr>
+        <td data-xls-comment="This formula needs to be updated for Q2"
+            data-xls-comment-author="Finance Team"
+            data-xls-comment-width="250"
+            data-xls-comment-height="80"
+            data-xls-comment-visible="true"
+            data-xls-formula="=SUM(A1:A10)">
+        </td>
+    </tr>
+</table>
+```
+
+**Use cases:**
+- Provide instructions for data entry
+- Add review notes or approvals
+- Document formula logic
+- Flag cells requiring attention
+- Add contextual information for collaborators
+
 ## Multi-Format Export
 
 Export your spreadsheets in multiple formats:
@@ -255,6 +324,73 @@ Insert images in cells using various sources:
 <td data-xls-image="data:image/png;base64,iVBORw0KGgo...">
 </td>
 ```
+
+## Hyperlinks
+
+Add clickable links to cells with automatic styling. Links are rendered as blue, underlined text in Excel/ODS files.
+
+### Attributes
+
+- `data-xls-link="URL"` - Hyperlink URL (required)
+- `data-xls-link-tooltip="text"` - Tooltip displayed on hover (optional)
+
+### Supported Link Types
+
+**External URLs:**
+```html
+<td data-xls-link="https://example.com">Visit our website</td>
+<td data-xls-link="https://github.com/user/repo">GitHub Repository</td>
+```
+
+**Internal References (to another sheet/cell):**
+```html
+<!-- Link to another sheet -->
+<td data-xls-link="#Sheet2!A1">Go to Sheet2, cell A1</td>
+
+<!-- Link to cell in same sheet -->
+<td data-xls-link="#B10">Jump to B10</td>
+
+<!-- Link with spaces in sheet name -->
+<td data-xls-link="#'My Data'!C5">Link to "My Data" sheet</td>
+```
+
+**Email Addresses:**
+```html
+<!-- Simple email -->
+<td data-xls-link="mailto:contact@example.com">Send email</td>
+
+<!-- Email with subject -->
+<td data-xls-link="mailto:support@example.com?subject=Help Request">Contact Support</td>
+```
+
+**With Tooltips:**
+```html
+<td data-xls-link="https://symfony.com/doc"
+    data-xls-link-tooltip="Click to view Symfony documentation">
+    Symfony Docs
+</td>
+```
+
+### Combining with Other Styles
+
+Hyperlinks can be combined with other cell styling:
+
+```html
+<td data-xls-link="https://example.com"
+    data-xls-bg-color="#FFFFCC"
+    data-xls-font-bold="true"
+    data-xls-link-tooltip="Important link">
+    Highlighted Link
+</td>
+```
+
+### Automatic Styling
+
+Hyperlinks are automatically styled with:
+- **Font color:** Blue (#0563C1)
+- **Text decoration:** Underlined
+
+These default styles can be overridden using `data-xls-font-color` and `data-xls-font-underline` attributes.
 
 ---
 
@@ -298,9 +434,47 @@ html_to_spreadsheet:
 ```
 
 
-## Example
+## Quick Start
 
-### Contrôleur
+### Simple Usage (Recommended)
+
+Use the `SpreadsheetRenderer` service or `SpreadsheetTrait` for a one-liner solution:
+
+```php
+<?php
+
+namespace App\Controller;
+
+use Davidannebicque\HtmlToSpreadsheetBundle\Controller\SpreadsheetTrait;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Attribute\Route;
+
+final class ReportController extends AbstractController
+{
+    use SpreadsheetTrait;
+
+    #[Route('/export', name: 'app_export')]
+    public function export(): Response
+    {
+        $data = [
+            ['name' => 'John Doe', 'amount' => 1234.56, 'date' => new \DateTime('2024-02-01')],
+            ['name' => 'Anna Smith', 'amount' => 987.45, 'date' => new \DateTime('2024-02-02')],
+        ];
+
+        // One-liner: render template + convert + stream
+        return $this->renderSpreadsheet(
+            'reports/export.html.twig',
+            ['lines' => $data],
+            'export.xlsx'
+        );
+    }
+}
+```
+
+### Advanced Usage
+
+For more control, use the services directly:
 
 ```php
 <?php
@@ -308,43 +482,87 @@ html_to_spreadsheet:
 namespace App\Controller;
 
 use Davidannebicque\HtmlToSpreadsheetBundle\Html\HtmlTableInterpreter;
+use Davidannebicque\HtmlToSpreadsheetBundle\Html\HtmlToXlsxOptions;
 use Davidannebicque\HtmlToSpreadsheetBundle\Spreadsheet\Response\ExcelResponseFactory;
+use Davidannebicque\HtmlToSpreadsheetBundle\Spreadsheet\SpreadsheetRenderer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
-use Davidannebicque\HtmlToSpreadsheetBundle\Html\HtmlToXlsxOptions;
 use Twig\Environment;
 
-final class DemoController extends AbstractController
+final class AdvancedController extends AbstractController
 {
-    #[Route('/demo', name: 'app_demo')]
-     public function export(
+    #[Route('/export-advanced', name: 'app_export_advanced')]
+    public function exportWithRenderer(SpreadsheetRenderer $renderer): Response
+    {
+        $data = [
+            ['nom' => 'Doe', 'prenom' => 'John', 'montant' => 1234.56, 'date' => new \DateTime('2024-02-01')],
+            ['nom' => 'Smith', 'prenom' => 'Anna', 'montant' => 987.45, 'date' => new \DateTime('2024-02-02')],
+        ];
+
+        // Using the renderer service
+        return $renderer->renderFromTemplate(
+            'demo/index.html.twig',
+            ['lignes' => $data],
+            'export-test.xlsx'
+        );
+    }
+
+    #[Route('/export-manual', name: 'app_export_manual')]
+    public function exportManual(
         Environment $twig,
         HtmlTableInterpreter $interpreter,
         ExcelResponseFactory $factory
     ): Response {
-        // Données d’exemple
         $lines = [
-            ['nom' => 'Doe',   'prenom' => 'John',  'montant' => 1234.56, 'date' => new \DateTime('2024-02-01')],
-            ['nom' => 'Smith', 'prenom' => 'Anna',  'montant' => 987.45,  'date' => new \DateTime('2024-02-02')],
-            ['nom' => 'Lemaire','prenom' => 'Lucie','montant' => 150.00,  'date' => new \DateTime('2024-02-03')],
+            ['nom' => 'Doe', 'prenom' => 'John', 'montant' => 1234.56, 'date' => new \DateTime('2024-02-01')],
+            ['nom' => 'Smith', 'prenom' => 'Anna', 'montant' => 987.45, 'date' => new \DateTime('2024-02-02')],
+            ['nom' => 'Lemaire', 'prenom' => 'Lucie', 'montant' => 150.00, 'date' => new \DateTime('2024-02-03')],
         ];
 
-        // 1) Rend la vue HTML annotée
-        $html = $twig->render('demo/index.html.twig', [
-            'lignes' => $lines,
-        ]);
+        // 1) Render HTML template
+        $html = $twig->render('demo/index.html.twig', ['lignes' => $lines]);
 
-        // 2) Convertit en Spreadsheet
+        // 2) Convert to Spreadsheet
         $workbook = $interpreter->fromHtml(
             $html,
-            new HtmlToXlsxOptions(strict: true) // strict = validation des attributes
+            new HtmlToXlsxOptions(strict: true)
         );
 
-        // 3) Renvoie le fichier Excel
+        // 3) Stream as file download
         return $factory->streamWorkbook($workbook, 'export-test.xlsx');
     }
+
+    #[Route('/create-workbook', name: 'app_create_workbook')]
+    public function createWorkbook(SpreadsheetRenderer $renderer): Response
+    {
+        // Get the workbook object without streaming (for further manipulation)
+        $workbook = $renderer->createFromTemplate(
+            'demo/index.html.twig',
+            ['lignes' => [/* data */]]
+        );
+
+        // Manipulate the workbook...
+        $workbook->getActiveSheet()->getCell('A1')->setValue('Modified');
+
+        // Then stream it manually
+        $factory = new ExcelResponseFactory();
+        return $factory->streamWorkbook($workbook, 'custom.xlsx');
+    }
 }
+```
+
+### Export Formats
+
+```php
+// XLSX (default)
+return $this->renderSpreadsheet('template.html.twig', $data, 'export.xlsx');
+
+// ODS (LibreOffice)
+return $this->renderSpreadsheet('template.html.twig', $data, 'export.ods');
+
+// CSV (first sheet only)
+return $this->renderSpreadsheet('template.html.twig', $data, 'export.csv');
 ```
 
 ### La vue (twig)

@@ -32,6 +32,11 @@ final class AttributeValidator
             'data-xls-font-underline'=>true,'data-xls-font-name'=>true,
             // Priority 2 attributes - Conditional formatting
             'data-xls-conditional'=>true,
+            // Priority 3 attributes - Hyperlinks
+            'data-xls-link'=>true,'data-xls-link-tooltip'=>true,
+            // Priority 3 attributes - Cell comments
+            'data-xls-comment-author'=>true,'data-xls-comment-width'=>true,'data-xls-comment-height'=>true,
+            'data-xls-comment-visible'=>true,
         ];
         $this->allowed = $allowed;
     }
@@ -93,6 +98,26 @@ final class AttributeValidator
         }
         if ($attr === 'data-xls-font-underline' && !in_array($value, ['single', 'double', 'none'], true)) {
             throw new \InvalidArgumentException("data-xls-font-underline doit être 'single', 'double' ou 'none'.");
+        }
+        // Priority 3 attributes validation
+        if ($attr === 'data-xls-link') {
+            // Validate URL format (external, internal, email)
+            $isExternal = filter_var($value, FILTER_VALIDATE_URL) !== false;
+            $isInternal = str_starts_with($value, '#');
+            $isEmail = str_starts_with($value, 'mailto:');
+
+            if (!$isExternal && !$isInternal && !$isEmail) {
+                throw new \InvalidArgumentException("data-xls-link doit être une URL valide, un lien interne (#Sheet!A1) ou un email (mailto:user@example.com)");
+            }
+        }
+        // Priority 3 attributes validation - Cell comments
+        if (in_array($attr, ['data-xls-comment-width', 'data-xls-comment-height'], true)) {
+            if (!is_numeric($value) || (float)$value <= 0) {
+                throw new \InvalidArgumentException("$attr doit être un nombre positif.");
+            }
+        }
+        if ($attr === 'data-xls-comment-visible' && !in_array($value, ['true', 'false'], true)) {
+            throw new \InvalidArgumentException("data-xls-comment-visible doit être 'true' ou 'false'.");
         }
     }
 }
