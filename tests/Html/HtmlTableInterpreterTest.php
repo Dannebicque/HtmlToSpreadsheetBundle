@@ -758,6 +758,125 @@ class HtmlTableInterpreterTest extends TestCase
     }
 
     // =============================
+    // Cell Merging: Rowspan & Colspan
+    // =============================
+
+    public function testRowspanSimple(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-rowspan="3">A</td><td>B1</td></tr>
+            <tr><td>B2</td></tr>
+            <tr><td>B3</td></tr>
+        </table>';
+
+        $workbook = $this->interpreter->fromHtml($html);
+        $sheet = $workbook->getActiveSheet();
+
+        $this->assertEquals('A', $sheet->getCell('A1')->getValue());
+        $this->assertTrue($sheet->getCell('A1')->isInMergeRange());
+        $this->assertContains('A1:A3', $sheet->getMergeCells());
+    }
+
+    public function testColspanSimple(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-colspan="3">Header</td></tr>
+            <tr><td>A</td><td>B</td><td>C</td></tr>
+        </table>';
+
+        $workbook = $this->interpreter->fromHtml($html);
+        $sheet = $workbook->getActiveSheet();
+
+        $this->assertEquals('Header', $sheet->getCell('A1')->getValue());
+        $this->assertTrue($sheet->getCell('A1')->isInMergeRange());
+        $this->assertContains('A1:C1', $sheet->getMergeCells());
+    }
+
+    public function testRowspanAndColspanCombined(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr>
+                <td data-xls-rowspan="2" data-xls-colspan="2">Merged 2x2</td>
+                <td>C1</td>
+            </tr>
+            <tr>
+                <td>C2</td>
+            </tr>
+        </table>';
+
+        $workbook = $this->interpreter->fromHtml($html);
+        $sheet = $workbook->getActiveSheet();
+
+        $this->assertEquals('Merged 2x2', $sheet->getCell('A1')->getValue());
+        $this->assertTrue($sheet->getCell('A1')->isInMergeRange());
+        $this->assertContains('A1:B2', $sheet->getMergeCells());
+    }
+
+    public function testComplexTableWithMergedCells(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <thead>
+                <tr>
+                    <th data-xls-colspan="2">Group 1</th>
+                    <th data-xls-colspan="2">Group 2</th>
+                </tr>
+                <tr>
+                    <th>A</th><th>B</th><th>C</th><th>D</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td data-xls-rowspan="2">Row 1-2</td>
+                    <td>1</td>
+                    <td>2</td>
+                    <td>3</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td>5</td>
+                    <td>6</td>
+                </tr>
+            </tbody>
+        </table>';
+
+        $workbook = $this->interpreter->fromHtml($html);
+        $sheet = $workbook->getActiveSheet();
+
+        // Check colspan in header
+        $this->assertContains('A1:B1', $sheet->getMergeCells());
+        $this->assertContains('C1:D1', $sheet->getMergeCells());
+
+        // Check rowspan in body
+        $this->assertContains('A3:A4', $sheet->getMergeCells());
+        $this->assertEquals('Row 1-2', $sheet->getCell('A3')->getValue());
+    }
+
+    public function testRowspanWithStyling(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr>
+                <td data-xls-rowspan="2"
+                    data-xls-bg-color="#FFCC00"
+                    data-xls-font-bold="true"
+                    data-xls-align="center"
+                    data-xls-valign="center">
+                    Merged & Styled
+                </td>
+                <td>A</td>
+            </tr>
+            <tr><td>B</td></tr>
+        </table>';
+
+        $workbook = $this->interpreter->fromHtml($html);
+        $sheet = $workbook->getActiveSheet();
+
+        $this->assertContains('A1:A2', $sheet->getMergeCells());
+
+        // Check styling applied
+        $style = $sheet->getStyle('A1');
+        $this->assertEquals('FFCC00', $style->getFill()->getStartColor()->getRGB());
+        $this->assertTrue($style->getFont()->getBold());
+        $this->assertEquals('center', $style->getAlignment()->getHorizontal());
     // Priority 3: Hyperlinks
     // =============================
 
