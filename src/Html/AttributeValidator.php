@@ -24,9 +24,14 @@ final class AttributeValidator
             'data-xls-colspan'=>true,'data-xls-rowspan'=>true,'data-xls-formula'=>true,'data-xls-hyperlink'=>true,
             'data-xls-comment'=>true,'data-xls-dv-list'=>true,'data-xls-type'=>true,'data-xls-number-locale'=>true,
             'data-xls-image'=>true,'data-xls-img-width'=>true,'data-xls-img-height'=>true,
-            // New attributes
+            // Priority 1 attributes
             'data-xls-bg-color'=>true,'data-xls-font-size'=>true,'data-xls-border'=>true,
             'data-xls-border-color'=>true,'data-xls-locked'=>true,
+            // Priority 2 attributes - Font styling
+            'data-xls-font-color'=>true,'data-xls-font-bold'=>true,'data-xls-font-italic'=>true,
+            'data-xls-font-underline'=>true,'data-xls-font-name'=>true,
+            // Priority 2 attributes - Named ranges & conditional formatting
+            'data-xls-name'=>true,'data-xls-conditional'=>true,
         ];
         $this->allowed = $allowed;
     }
@@ -78,6 +83,19 @@ final class AttributeValidator
         }
         if ($attr === 'data-xls-locked' && !in_array($value, ['true', 'false'], true)) {
             throw new \InvalidArgumentException("data-xls-locked doit être 'true' ou 'false'.");
+        }
+        // Priority 2 attributes validation
+        if ($attr === 'data-xls-font-color' && !preg_match('/^#?[0-9A-Fa-f]{6}$/', $value)) {
+            throw new \InvalidArgumentException("Couleur de police invalide pour $attr: $value (attendu: format hex #RRGGBB)");
+        }
+        if (in_array($attr, ['data-xls-font-bold', 'data-xls-font-italic'], true) && !in_array($value, ['true', 'false'], true)) {
+            throw new \InvalidArgumentException("$attr doit être 'true' ou 'false'.");
+        }
+        if ($attr === 'data-xls-font-underline' && !in_array($value, ['single', 'double', 'none'], true)) {
+            throw new \InvalidArgumentException("data-xls-font-underline doit être 'single', 'double' ou 'none'.");
+        }
+        if ($attr === 'data-xls-name' && ($value === '' || !preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $value))) {
+            throw new \InvalidArgumentException("data-xls-name doit être un nom valide (lettres, chiffres, underscore, ne commence pas par un chiffre).");
         }
     }
 }

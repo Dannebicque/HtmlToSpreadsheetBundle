@@ -3,7 +3,9 @@
 namespace Davidannebicque\HtmlToSpreadsheetBundle\Html;
 
 use Davidannebicque\HtmlToSpreadsheetBundle\Spreadsheet\Styler\SheetStyler;
+use PhpOffice\PhpSpreadsheet\NamedRange;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Style;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
@@ -211,6 +213,50 @@ final class HtmlTableInterpreter
                 $sheet->getStyle($coord)->getProtection()->setLocked($locked === 'true');
             }
 
+            // Priority 2 attributes: Font styling
+            if ($fontColor = $cellNode->getAttribute('data-xls-font-color')) {
+                $sheet->getStyle($coord)->getFont()->getColor()->setRGB(ltrim($fontColor, '#'));
+            }
+            if ($cellNode->hasAttribute('data-xls-font-bold') && $cellNode->getAttribute('data-xls-font-bold') === 'true') {
+                $sheet->getStyle($coord)->getFont()->setBold(true);
+            }
+            if ($cellNode->hasAttribute('data-xls-font-italic') && $cellNode->getAttribute('data-xls-font-italic') === 'true') {
+                $sheet->getStyle($coord)->getFont()->setItalic(true);
+            }
+            if ($underline = $cellNode->getAttribute('data-xls-font-underline')) {
+                $underlineStyle = match($underline) {
+                    'single' => \PhpOffice\PhpSpreadsheet\Style\Font::UNDERLINE_SINGLE,
+                    'double' => \PhpOffice\PhpSpreadsheet\Style\Font::UNDERLINE_DOUBLE,
+                    'none' => \PhpOffice\PhpSpreadsheet\Style\Font::UNDERLINE_NONE,
+                    default => \PhpOffice\PhpSpreadsheet\Style\Font::UNDERLINE_NONE,
+                };
+                $sheet->getStyle($coord)->getFont()->setUnderline($underlineStyle);
+            }
+            if ($fontName = $cellNode->getAttribute('data-xls-font-name')) {
+                $sheet->getStyle($coord)->getFont()->setName($fontName);
+            }
+
+            // Priority 2 attributes: Named ranges
+            if ($name = $cellNode->getAttribute('data-xls-name')) {
+                // Format: SheetName!$A$1 (absolute reference)
+                $sheetName = $sheet->getTitle();
+                $absoluteCoord = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::absoluteReference($coord);
+                $rangeValue = $sheetName . '!' . $absoluteCoord;
+
+                $sheet->getParent()->addNamedRange(
+                    new NamedRange(
+                        $name,
+                        $sheet,
+                        $rangeValue
+                    )
+                );
+            }
+
+            // Priority 2 attributes: Conditional formatting
+            if ($conditional = $cellNode->getAttribute('data-xls-conditional')) {
+                $this->applyConditionalFormatting($sheet, $coord, $conditional);
+            }
+
             // Fusionner si besoin
             if ($colspan > 1 || $rowspan > 1) {
                 $endCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + $colspan - 1);
@@ -323,6 +369,92 @@ final class HtmlTableInterpreter
 
         // Si le chemin n'existe pas, on lance une exception
         throw new \InvalidArgumentException("Image introuvable: $src");
+    }
+
+    /**
+     * Applique un formatage conditionnel à une cellule.
+     * Syntaxe: "condition|style"
+     * Exemples:
+     * - "value>100|bg:red|font:white"
+     * - "value<0|bg:FF0000"
+     * - "between:0:100|bg:green"
+     */
+    private function applyConditionalFormatting(Worksheet $sheet, string $coord, string $conditional): void
+    {
+        // Parser la syntaxe : condition|style1|style2...
+        $parts = explode('|', $conditional);
+        if (count($parts) < 2) {
+            return; // Format invalide, on ignore silencieusement
+        }
+
+        $conditionStr = array_shift($parts);
+
+        // Parser la condition
+        $condition = null;
+        if (preg_match('/^value\s*([><=!]+)\s*(.+)$/', $conditionStr, $matches)) {
+            $operator = $matches[1];
+            $value = $matches[2];
+
+            // Créer la condition
+            $condition = new \PhpOffice\PhpSpreadsheet\Style\Conditional();
+            $condition->setConditionType(\PhpOffice\PhpSpreadsheet\Style\Conditional::CONDITION_CELLIS);
+
+            $operatorType = match($operator) {
+                '>' => \PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_GREATERTHAN,
+                '>=' => \PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_GREATERTHANOREQUAL,
+                '<' => \PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_LESSTHAN,
+                '<=' => \PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_LESSTHANOREQUAL,
+                '==' , '=' => \PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_EQUAL,
+                '!=' => \PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_NOTEQUAL,
+                default => null,
+            };
+
+            if ($operatorType) {
+                $condition->setOperatorType($operatorType);
+                $condition->addCondition($value);
+            }
+        } elseif (preg_match('/^between:(.+):(.+)$/', $conditionStr, $matches)) {
+            $min = $matches[1];
+            $max = $matches[2];
+
+            $condition = new \PhpOffice\PhpSpreadsheet\Style\Conditional();
+            $condition->setConditionType(\PhpOffice\PhpSpreadsheet\Style\Conditional::CONDITION_CELLIS);
+            $condition->setOperatorType(\PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_BETWEEN);
+            $condition->addCondition($min);
+            $condition->addCondition($max);
+        }
+
+        if (!$condition) {
+            return; // Condition invalide
+        }
+
+        // Parser les styles
+        $styleArray = [];
+        foreach ($parts as $stylePart) {
+            if (preg_match('/^bg:(.+)$/', $stylePart, $matches)) {
+                $styleArray['fill'] = [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => ltrim($matches[1], '#')],
+                ];
+            } elseif (preg_match('/^font:(.+)$/', $stylePart, $matches)) {
+                $styleArray['font'] = [
+                    'color' => ['rgb' => ltrim($matches[1], '#')],
+                ];
+            } elseif (preg_match('/^bold$/', $stylePart)) {
+                $styleArray['font']['bold'] = true;
+            }
+        }
+
+        if (!empty($styleArray)) {
+            $style = new Style(false, true); // isConditional = true
+            $style->applyFromArray($styleArray);
+            $condition->setStyle($style);
+        }
+
+        // Appliquer la condition
+        $conditionalStyles = $sheet->getStyle($coord)->getConditionalStyles();
+        $conditionalStyles[] = $condition;
+        $sheet->getStyle($coord)->setConditionalStyles($conditionalStyles);
     }
 
     /**
