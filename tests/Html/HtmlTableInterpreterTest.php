@@ -756,4 +756,105 @@ class HtmlTableInterpreterTest extends TestCase
         // Vérifier que le style contient bien un background et une font
         $this->assertNotNull($style);
     }
+
+    // Priority 3: Autosize Columns Tests
+
+    public function testAutosizeAllColumns(): void
+    {
+        $html = '<table data-xls-sheet="Test" data-xls-autosize="true">
+            <tr><td>Short</td><td>Much longer content</td><td>X</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        // Check that all columns have autosize enabled
+        $this->assertTrue($sheet->getColumnDimension('A')->getAutoSize());
+        $this->assertTrue($sheet->getColumnDimension('B')->getAutoSize());
+        $this->assertTrue($sheet->getColumnDimension('C')->getAutoSize());
+    }
+
+    public function testAutosizeSingleColumn(): void
+    {
+        $html = '<table data-xls-sheet="Test" data-xls-autosize="B">
+            <tr><td>A</td><td>Long content in B</td><td>C</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        // Only column B should have autosize
+        $this->assertFalse($sheet->getColumnDimension('A')->getAutoSize());
+        $this->assertTrue($sheet->getColumnDimension('B')->getAutoSize());
+        $this->assertFalse($sheet->getColumnDimension('C')->getAutoSize());
+    }
+
+    public function testAutosizeColumnRange(): void
+    {
+        $html = '<table data-xls-sheet="Test" data-xls-autosize="A:C">
+            <tr><td>A</td><td>B</td><td>C</td><td>D</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        // Columns A, B, C should have autosize
+        $this->assertTrue($sheet->getColumnDimension('A')->getAutoSize());
+        $this->assertTrue($sheet->getColumnDimension('B')->getAutoSize());
+        $this->assertTrue($sheet->getColumnDimension('C')->getAutoSize());
+        $this->assertFalse($sheet->getColumnDimension('D')->getAutoSize());
+    }
+
+    public function testAutosizeSpecificColumns(): void
+    {
+        $html = '<table data-xls-sheet="Test" data-xls-autosize="A,C">
+            <tr><td>A</td><td>B</td><td>C</td><td>D</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        // Only columns A and C should have autosize
+        $this->assertTrue($sheet->getColumnDimension('A')->getAutoSize());
+        $this->assertFalse($sheet->getColumnDimension('B')->getAutoSize());
+        $this->assertTrue($sheet->getColumnDimension('C')->getAutoSize());
+        $this->assertFalse($sheet->getColumnDimension('D')->getAutoSize());
+    }
+
+    public function testAutosizeOnColElement(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <colgroup>
+                <col data-xls-autosize="true">
+                <col data-xls-width="50">
+                <col data-xls-autosize="true">
+            </colgroup>
+            <tr><td>A</td><td>B</td><td>C</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        // Columns A and C should have autosize, B should have fixed width
+        $this->assertTrue($sheet->getColumnDimension('A')->getAutoSize());
+        $this->assertFalse($sheet->getColumnDimension('B')->getAutoSize());
+        $this->assertEquals(50, $sheet->getColumnDimension('B')->getWidth());
+        $this->assertTrue($sheet->getColumnDimension('C')->getAutoSize());
+    }
+
+    public function testAutosizeInvalidValueThrowsException(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("data-xls-autosize doit être 'true', une colonne (A), une plage (A:D) ou une liste (A,C,E)");
+
+        $strictValidator = new AttributeValidator(strict: true);
+        $styler = new SheetStyler($this->registry);
+        $strictInterpreter = new HtmlTableInterpreter($styler, $strictValidator);
+
+        $html = '<table data-xls-sheet="Test" data-xls-autosize="invalid">
+            <tr><td>Test</td></tr>
+        </table>';
+
+        $strictInterpreter->fromHtml($html);
+    }
 }

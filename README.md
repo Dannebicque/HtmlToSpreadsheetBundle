@@ -127,6 +127,78 @@ Apply dynamic formatting based on cell values using a simple syntax:
 </td>
 ```
 
+## Auto-size Columns
+
+Automatically adjust column widths to fit content. This feature uses PhpSpreadsheet's auto-sizing capability to calculate optimal column widths based on cell content.
+
+### Attributes
+
+**Table-level:**
+- `data-xls-autosize="true"` - Auto-size all columns in the table
+- `data-xls-autosize="A"` - Auto-size a single column (A)
+- `data-xls-autosize="A:D"` - Auto-size a range of columns (A through D)
+- `data-xls-autosize="A,C,E"` - Auto-size specific columns (A, C, and E)
+
+**Column-level (in `<colgroup>`):**
+- `data-xls-autosize="true"` - Auto-size this specific column
+
+### Examples
+
+**Auto-size all columns:**
+```html
+<table data-xls-sheet="Products" data-xls-autosize="true">
+    <tr>
+        <td>Product A</td>
+        <td>This is a much longer description</td>
+        <td>$99.99</td>
+    </tr>
+</table>
+```
+
+**Auto-size specific columns:**
+```html
+<table data-xls-sheet="Report" data-xls-autosize="A,C">
+    <tr>
+        <td>Name</td>
+        <td>Fixed width column</td>
+        <td>Long description text</td>
+    </tr>
+</table>
+```
+
+**Auto-size columns by range:**
+```html
+<table data-xls-sheet="Data" data-xls-autosize="B:D">
+    <tr>
+        <td>ID</td>
+        <td>Name</td>
+        <td>Email</td>
+        <td>Phone</td>
+        <td>Notes</td>
+    </tr>
+</table>
+```
+
+**Column-level auto-size with colgroup:**
+```html
+<table data-xls-sheet="Mixed">
+    <colgroup>
+        <col data-xls-width="10">
+        <col data-xls-autosize="true">
+        <col data-xls-width="30">
+        <col data-xls-autosize="true">
+    </colgroup>
+    <tr>
+        <td>ID</td>
+        <td>Variable width name</td>
+        <td>Fixed</td>
+        <td>Variable width description</td>
+    </tr>
+</table>
+```
+
+**Note:** Auto-size calculates width based on content after all data is loaded. If both `data-xls-width` and `data-xls-autosize` are specified, autosize takes precedence.
+
 ## Multi-Format Export
 
 Export your spreadsheets in multiple formats:
