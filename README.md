@@ -2,7 +2,7 @@
 
 [![Latest Version](https://img.shields.io/packagist/v/davidannebicque/html-to-spreadsheet-bundle.svg)](https://packagist.org/packages/davidannebicque/html-to-spreadsheet-bundle)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Symfony](https://img.shields.io/badge/Symfony-7.x/8.x-black.svg)](https://symfony.com)
+[![Symfony](https://img.shields.io/badge/Symfony-6.4/7.x/8.x-black.svg)](https://symfony.com)
 [![PhpSpreadsheet](https://img.shields.io/badge/PhpSpreadsheet-4.x/5.x-yellow.svg)](https://github.com/PHPOffice/PhpSpreadsheet)
 
 ## Warning
@@ -20,7 +20,7 @@ This bundle is ideal for developers who want to use **Twig + HTML** as a DSL to 
 ## Requirements
 
 - PHP 8.2+
-- Symfony 7.3+
+- Symfony 6.4+
 - PhpSpreadsheet 4.x|5.x (maybe 3  also compatible, not tested)
 
 ## ✨ Features
@@ -59,6 +59,71 @@ This bundle is ideal for developers who want to use **Twig + HTML** as a DSL to 
     data-xls-border-color="FF0000"
     data-xls-locked="true">
     Protected Cell
+</td>
+```
+
+## ✍️ Font Styling
+
+Control font appearance with these attributes:
+
+### Font Color & Weight
+- `data-xls-font-color="#FF0000"` - Set font color (hex format)
+- `data-xls-font-bold="true"` - Make text bold (`true` or `false`)
+- `data-xls-font-italic="true"` - Make text italic (`true` or `false`)
+
+### Font Decoration & Family
+- `data-xls-font-underline="single"` - Underline text (`single`, `double`, or `none`)
+- `data-xls-font-name="Arial"` - Set font family (e.g., "Arial", "Times New Roman", "Calibri")
+
+### Example
+```html
+<td data-xls-font-color="#0000FF"
+    data-xls-font-bold="true"
+    data-xls-font-italic="true"
+    data-xls-font-underline="single"
+    data-xls-font-name="Arial">
+    Styled Text
+</td>
+```
+
+## 🎯 Conditional Formatting
+
+Apply dynamic formatting based on cell values using a simple syntax:
+
+**Syntax:** `data-xls-conditional="condition|style1|style2..."`
+
+### Available Conditions
+- `value>X` - Greater than
+- `value<X` - Less than
+- `value>=X` - Greater than or equal
+- `value<=X` - Less than or equal
+- `value==X` - Equal to
+- `value!=X` - Not equal to
+- `between:min:max` - Value between min and max
+
+### Available Styles
+- `bg:RRGGBB` - Background color (hex without #)
+- `font:RRGGBB` - Font color (hex without #)
+- `bold` - Bold text
+
+### Examples
+```html
+<!-- Highlight negative values in red -->
+<td data-xls-type="number"
+    data-xls-conditional="value<0|bg:FFCCCC|font:FF0000">
+    -150.50
+</td>
+
+<!-- Highlight high values with bold green -->
+<td data-xls-type="number"
+    data-xls-conditional="value>1000|bg:CCFFCC|bold">
+    1500.00
+</td>
+
+<!-- Highlight values in a range -->
+<td data-xls-type="number"
+    data-xls-conditional="between:100:500|bg:FFFFCC">
+    250.00
 </td>
 ```
 

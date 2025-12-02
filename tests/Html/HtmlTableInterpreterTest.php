@@ -586,4 +586,174 @@ class HtmlTableInterpreterTest extends TestCase
 
         $this->interpreter->fromHtml($html);
     }
+
+    // Priority 2: Font Styling Tests
+
+    public function testFontColor(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-font-color="#FF0000">Red text</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $fontColor = $sheet->getStyle('A1')->getFont()->getColor()->getRGB();
+        $this->assertEquals('FF0000', $fontColor);
+    }
+
+    public function testFontBold(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-font-bold="true">Bold text</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $this->assertTrue($sheet->getStyle('A1')->getFont()->getBold());
+    }
+
+    public function testFontItalic(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-font-italic="true">Italic text</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $this->assertTrue($sheet->getStyle('A1')->getFont()->getItalic());
+    }
+
+    public function testFontUnderlineSingle(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-font-underline="single">Underlined text</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $underline = $sheet->getStyle('A1')->getFont()->getUnderline();
+        $this->assertEquals(\PhpOffice\PhpSpreadsheet\Style\Font::UNDERLINE_SINGLE, $underline);
+    }
+
+    public function testFontUnderlineDouble(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-font-underline="double">Double underlined</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $underline = $sheet->getStyle('A1')->getFont()->getUnderline();
+        $this->assertEquals(\PhpOffice\PhpSpreadsheet\Style\Font::UNDERLINE_DOUBLE, $underline);
+    }
+
+    public function testFontName(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-font-name="Arial">Arial text</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $fontName = $sheet->getStyle('A1')->getFont()->getName();
+        $this->assertEquals('Arial', $fontName);
+    }
+
+    public function testCombinedFontStyling(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-font-color="#0000FF"
+                    data-xls-font-bold="true"
+                    data-xls-font-italic="true"
+                    data-xls-font-size="16"
+                    data-xls-font-name="Times New Roman">Styled text</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $font = $sheet->getStyle('A1')->getFont();
+        $this->assertEquals('0000FF', $font->getColor()->getRGB());
+        $this->assertTrue($font->getBold());
+        $this->assertTrue($font->getItalic());
+        $this->assertEquals(16, $font->getSize());
+        $this->assertEquals('Times New Roman', $font->getName());
+    }
+
+    // Priority 2: Conditional Formatting Tests
+
+    public function testConditionalFormattingGreaterThan(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-conditional="value>100|bg:FF0000">150</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $conditionalStyles = $sheet->getStyle('A1')->getConditionalStyles();
+        $this->assertCount(1, $conditionalStyles);
+
+        $condition = $conditionalStyles[0];
+        $this->assertEquals(\PhpOffice\PhpSpreadsheet\Style\Conditional::CONDITION_CELLIS, $condition->getConditionType());
+        $this->assertEquals(\PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_GREATERTHAN, $condition->getOperatorType());
+    }
+
+    public function testConditionalFormattingLessThan(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-conditional="value<0|bg:FF0000">-10</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $conditionalStyles = $sheet->getStyle('A1')->getConditionalStyles();
+        $this->assertCount(1, $conditionalStyles);
+
+        $condition = $conditionalStyles[0];
+        $this->assertEquals(\PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_LESSTHAN, $condition->getOperatorType());
+    }
+
+    public function testConditionalFormattingBetween(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-conditional="between:0:100|bg:00FF00">50</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $conditionalStyles = $sheet->getStyle('A1')->getConditionalStyles();
+        $this->assertCount(1, $conditionalStyles);
+
+        $condition = $conditionalStyles[0];
+        $this->assertEquals(\PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_BETWEEN, $condition->getOperatorType());
+        $this->assertEquals(['0', '100'], $condition->getConditions());
+    }
+
+    public function testConditionalFormattingMultipleStyles(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-conditional="value>100|bg:FF0000|font:FFFFFF|bold">150</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $conditionalStyles = $sheet->getStyle('A1')->getConditionalStyles();
+        $this->assertCount(1, $conditionalStyles);
+
+        $condition = $conditionalStyles[0];
+        $style = $condition->getStyle();
+
+        // Vérifier que le style contient bien un background et une font
+        $this->assertNotNull($style);
+    }
 }
