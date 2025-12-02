@@ -86,23 +86,6 @@ Control font appearance with these attributes:
 </td>
 ```
 
-## 🏷️ Named Ranges
-
-Create named references to cells or ranges that can be used in formulas:
-
-```html
-<!-- Define a named cell -->
-<td data-xls-name="TotalRevenue" data-xls-type="number">
-    1500.50
-</td>
-
-<!-- Use the named range in a formula -->
-<td data-xls-formula="TotalRevenue * 0.2">
-</td>
-```
-
-Named ranges must start with a letter or underscore, and can contain letters, numbers, and underscores.
-
 ## 🎯 Conditional Formatting
 
 Apply dynamic formatting based on cell values using a simple syntax:

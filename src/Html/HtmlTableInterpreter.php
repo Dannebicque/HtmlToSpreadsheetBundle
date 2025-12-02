@@ -3,7 +3,6 @@
 namespace Davidannebicque\HtmlToSpreadsheetBundle\Html;
 
 use Davidannebicque\HtmlToSpreadsheetBundle\Spreadsheet\Styler\SheetStyler;
-use PhpOffice\PhpSpreadsheet\NamedRange;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Style;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
@@ -234,22 +233,6 @@ final class HtmlTableInterpreter
             }
             if ($fontName = $cellNode->getAttribute('data-xls-font-name')) {
                 $sheet->getStyle($coord)->getFont()->setName($fontName);
-            }
-
-            // Priority 2 attributes: Named ranges
-            if ($name = $cellNode->getAttribute('data-xls-name')) {
-                // Format: SheetName!$A$1 (absolute reference)
-                $sheetName = $sheet->getTitle();
-                $absoluteCoord = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::absoluteReference($coord);
-                $rangeValue = $sheetName . '!' . $absoluteCoord;
-
-                $sheet->getParent()->addNamedRange(
-                    new NamedRange(
-                        $name,
-                        $sheet,
-                        $rangeValue
-                    )
-                );
             }
 
             // Priority 2 attributes: Conditional formatting

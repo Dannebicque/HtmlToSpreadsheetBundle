@@ -686,62 +686,6 @@ class HtmlTableInterpreterTest extends TestCase
         $this->assertEquals('Times New Roman', $font->getName());
     }
 
-    // Priority 2: Named Ranges Tests
-
-    public function testNamedRange(): void
-    {
-        $html = '<table data-xls-sheet="Test">
-            <tr><td data-xls-name="MyCell">Value</td></tr>
-        </table>';
-
-        $spreadsheet = $this->interpreter->fromHtml($html);
-
-        $namedRanges = array_values($spreadsheet->getNamedRanges());
-        $this->assertCount(1, $namedRanges);
-        $this->assertEquals('MyCell', $namedRanges[0]->getName());
-        $this->assertEquals('Test!$A$1', $namedRanges[0]->getValue());
-    }
-
-    public function testMultipleNamedRanges(): void
-    {
-        $html = '<table data-xls-sheet="Test">
-            <tr>
-                <td data-xls-name="FirstCell">10</td>
-                <td data-xls-name="SecondCell">20</td>
-            </tr>
-        </table>';
-
-        $spreadsheet = $this->interpreter->fromHtml($html);
-
-        $namedRanges = array_values($spreadsheet->getNamedRanges());
-        $this->assertCount(2, $namedRanges);
-
-        $names = array_map(fn($nr) => $nr->getName(), $namedRanges);
-        $this->assertContains('FirstCell', $names);
-        $this->assertContains('SecondCell', $names);
-    }
-
-    public function testNamedRangeInFormula(): void
-    {
-        $html = '<table data-xls-sheet="Test">
-            <tr>
-                <td data-xls-name="Price">100</td>
-                <td data-xls-name="Quantity">5</td>
-                <td data-xls-formula="=Price*Quantity"></td>
-            </tr>
-        </table>';
-
-        $spreadsheet = $this->interpreter->fromHtml($html);
-        $sheet = $spreadsheet->getActiveSheet();
-
-        // Verify named ranges exist
-        $namedRanges = array_values($spreadsheet->getNamedRanges());
-        $this->assertCount(2, $namedRanges);
-
-        // Verify formula uses names
-        $this->assertEquals('=Price*Quantity', $sheet->getCell('C1')->getValue());
-    }
-
     // Priority 2: Conditional Formatting Tests
 
     public function testConditionalFormattingGreaterThan(): void

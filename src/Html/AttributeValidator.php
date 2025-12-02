@@ -30,8 +30,8 @@ final class AttributeValidator
             // Priority 2 attributes - Font styling
             'data-xls-font-color'=>true,'data-xls-font-bold'=>true,'data-xls-font-italic'=>true,
             'data-xls-font-underline'=>true,'data-xls-font-name'=>true,
-            // Priority 2 attributes - Named ranges & conditional formatting
-            'data-xls-name'=>true,'data-xls-conditional'=>true,
+            // Priority 2 attributes - Conditional formatting
+            'data-xls-conditional'=>true,
         ];
         $this->allowed = $allowed;
     }
@@ -93,9 +93,6 @@ final class AttributeValidator
         }
         if ($attr === 'data-xls-font-underline' && !in_array($value, ['single', 'double', 'none'], true)) {
             throw new \InvalidArgumentException("data-xls-font-underline doit être 'single', 'double' ou 'none'.");
-        }
-        if ($attr === 'data-xls-name' && ($value === '' || !preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $value))) {
-            throw new \InvalidArgumentException("data-xls-name doit être un nom valide (lettres, chiffres, underscore, ne commence pas par un chiffre).");
         }
     }
 }

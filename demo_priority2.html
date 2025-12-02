@@ -1,0 +1,95 @@
+<table data-xls-sheet="Demo Priority 2" data-xls-freeze="A2" data-xls-autofilter="A1:E1">
+    <colgroup>
+        <col data-xls-width="20">
+        <col data-xls-width="18">
+        <col data-xls-width="18">
+        <col data-xls-width="22">
+        <col data-xls-width="25">
+    </colgroup>
+
+    <thead>
+        <tr data-xls-apply="th">
+            <th data-xls-font-color="#FFFFFF" data-xls-bg-color="#4472C4" data-xls-font-bold="true">Produit</th>
+            <th data-xls-font-color="#FFFFFF" data-xls-bg-color="#4472C4" data-xls-font-bold="true">Prix Unit.</th>
+            <th data-xls-font-color="#FFFFFF" data-xls-bg-color="#4472C4" data-xls-font-bold="true">Quantité</th>
+            <th data-xls-font-color="#FFFFFF" data-xls-bg-color="#4472C4" data-xls-font-bold="true">Total</th>
+            <th data-xls-font-color="#FFFFFF" data-xls-bg-color="#4472C4" data-xls-font-bold="true">Statut</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        <!-- Row 1: Font styling demo -->
+        <tr>
+            <td data-xls-font-name="Arial" data-xls-font-bold="true" data-xls-font-italic="true">Ordinateur Portable</td>
+            <td data-xls-type="number" data-xls-apply="money">1299.99</td>
+            <td data-xls-type="number">15</td>
+            <td data-xls-type="number" data-xls-formula="=B2*C2" data-xls-apply="money"></td>
+            <td data-xls-font-color="#006600" data-xls-font-bold="true">En stock</td>
+        </tr>
+
+        <!-- Row 2: Conditional formatting - low value -->
+        <tr>
+            <td data-xls-font-name="Calibri">Souris sans fil</td>
+            <td data-xls-type="number" data-xls-apply="money">24.99</td>
+            <td data-xls-type="number">50</td>
+            <td data-xls-type="number"
+                data-xls-formula="=B3*C3"
+                data-xls-apply="money"
+                data-xls-conditional="value<2000|bg:FFFFCC|font:FF6600"></td>
+            <td data-xls-font-color="#006600" data-xls-font-bold="true">En stock</td>
+        </tr>
+
+        <!-- Row 3: Font underline + conditional formatting -->
+        <tr>
+            <td data-xls-font-underline="single">Clavier mécanique</td>
+            <td data-xls-type="number" data-xls-apply="money">149.99</td>
+            <td data-xls-type="number">30</td>
+            <td data-xls-type="number"
+                data-xls-formula="=B4*C4"
+                data-xls-apply="money"
+                data-xls-conditional="between:2000:6000|bg:E7E6E6"></td>
+            <td data-xls-font-color="#FF9900" data-xls-font-bold="true">Stock faible</td>
+        </tr>
+
+        <!-- Row 4: Multiple font styles -->
+        <tr>
+            <td data-xls-font-name="Times New Roman"
+                data-xls-font-italic="true"
+                data-xls-font-color="#0066CC">Écran 27"</td>
+            <td data-xls-type="number" data-xls-apply="money">399.99</td>
+            <td data-xls-type="number">20</td>
+            <td data-xls-type="number"
+                data-xls-formula="=B5*C5"
+                data-xls-apply="money"
+                data-xls-conditional="value>6000|bg:CCFFCC|bold"></td>
+            <td data-xls-font-color="#006600" data-xls-font-bold="true">En stock</td>
+        </tr>
+
+        <!-- Row 5: Underline double + red text for alert -->
+        <tr>
+            <td data-xls-font-underline="double" data-xls-font-color="#CC0000">Imprimante laser</td>
+            <td data-xls-type="number" data-xls-apply="money">599.99</td>
+            <td data-xls-type="number">8</td>
+            <td data-xls-type="number"
+                data-xls-formula="=B6*C6"
+                data-xls-apply="money"
+                data-xls-conditional="between:2000:6000|bg:E7E6E6"></td>
+            <td data-xls-font-color="#CC0000" data-xls-font-bold="true" data-xls-bg-color="#FFE6E6">Rupture</td>
+        </tr>
+
+        <!-- Total row -->
+        <tr data-xls-bg-color="#F2F2F2">
+            <td data-xls-colspan="3"
+                data-xls-align="right"
+                data-xls-font-bold="true"
+                data-xls-font-size="12">TOTAL GÉNÉRAL :</td>
+            <td data-xls-type="number"
+                data-xls-formula="=D2+D3+D4+D5+D6"
+                data-xls-apply="money"
+                data-xls-font-bold="true"
+                data-xls-font-size="12"
+                data-xls-bg-color="#FFCC00"></td>
+            <td></td>
+        </tr>
+    </tbody>
+</table>
