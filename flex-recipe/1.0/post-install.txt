@@ -1,0 +1,21 @@
+<bg=blue;fg=white>                                          </>
+<bg=blue;fg=white>  HtmlToSpreadsheetBundle installed!     </>
+<bg=blue;fg=white>                                          </>
+
+  * <fg=blue>Configure</> your bundle in <comment>config/packages/html_to_spreadsheet.yaml</>
+  * <fg=blue>Documentation:</> https://github.com/Davidannebicque/HtmlToSpreadsheetBundle
+  * <fg=blue>Examples:</> See README.md for usage examples
+
+  <fg=green>Next steps:</>
+    1. Create a Twig template with <comment>data-xls-*</> attributes
+    2. Use <comment>HtmlTableInterpreter</> to convert HTML to Excel
+    3. Return a streamed response with <comment>ExcelResponseFactory</>
+
+  <fg=yellow>New in this version:</>
+    • Font styling (color, bold, italic, underline, font-family)
+    • Conditional formatting (value-based cell styling)
+    • Multi-format export (XLSX, CSV, ODS)
+    • Image support (local, remote, data-URI)
+    • Cell protection and borders
+
+Enjoy! ✨
