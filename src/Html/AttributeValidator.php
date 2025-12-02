@@ -99,6 +99,18 @@ final class AttributeValidator
         if ($attr === 'data-xls-font-underline' && !in_array($value, ['single', 'double', 'none'], true)) {
             throw new \InvalidArgumentException("data-xls-font-underline doit être 'single', 'double' ou 'none'.");
         }
+        // Priority 3 attributes validation - Autosize
+        if ($attr === 'data-xls-autosize') {
+            // Validate autosize values: "true", "A", "A:D", "A,C,E"
+            $isTrue = $value === 'true';
+            $isSingleColumn = preg_match('/^[A-Z]+$/', $value);
+            $isRange = preg_match('/^[A-Z]+:[A-Z]+$/', $value);
+            $isList = preg_match('/^[A-Z]+(,[A-Z]+)*$/', $value);
+
+            if (!$isTrue && !$isSingleColumn && !$isRange && !$isList) {
+                throw new \InvalidArgumentException("data-xls-autosize doit être 'true', une colonne (A), une plage (A:D) ou une liste (A,C,E).");
+            }
+        }
         // Priority 3 attributes validation
         if ($attr === 'data-xls-link') {
             // Validate URL format (external, internal, email)

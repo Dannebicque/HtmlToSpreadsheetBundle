@@ -115,6 +115,13 @@ final class HtmlTableInterpreter
             $dim = $sheet->getColumnDimensionByColumn($colIndex);
             if ($w = $col->getAttribute('data-xls-width'))  $dim->setWidth((float)$w);
             if ($col->getAttribute('data-xls-hidden') === 'true') $dim->setVisible(false);
+            if ($col->hasAttribute('data-xls-autosize')) {
+                $autosizeValue = $col->getAttribute('data-xls-autosize');
+                $this->validator->assertAllowed('data-xls-autosize', $autosizeValue);
+                if ($autosizeValue === 'true') {
+                    $dim->setAutoSize(true);
+                }
+            }
             if ($style = $col->getAttribute('data-xls-apply')) {
                 $this->styler->applyNamedStyleToColumn($sheet, $colIndex, $style);
             }
@@ -347,12 +354,41 @@ final class HtmlTableInterpreter
     private function postProcessTable(Worksheet $sheet, \DOMElement $tbl): void
     {
         if ($tbl->hasAttribute('data-xls-autosize')) {
-            foreach (explode(':', $tbl->getAttribute('data-xls-autosize')) as $range) {
-                [$start, $end] = explode('A', str_replace([':', ' '], [' A', ''], $range)) + [1 => null];
-                // simplifié: autosize par lettres A..D
-                foreach (range($range[0], $range[-1]) as $colLetter) {
-                    $sheet->getColumnDimension($colLetter)->setAutoSize(true);
+            $autosizeValue = $tbl->getAttribute('data-xls-autosize');
+
+            // Validate the attribute value
+            $this->validator->assertAllowed('data-xls-autosize', $autosizeValue);
+
+            // Case 1: data-xls-autosize="true" → auto-size all columns
+            if ($autosizeValue === 'true') {
+                $highestColumn = $sheet->getHighestColumn();
+                $highestColumnIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn);
+
+                for ($col = 1; $col <= $highestColumnIndex; $col++) {
+                    $sheet->getColumnDimensionByColumn($col)->setAutoSize(true);
                 }
+            }
+            // Case 2: data-xls-autosize="A:D" → auto-size columns A through D
+            elseif (preg_match('/^([A-Z]+):([A-Z]+)$/', $autosizeValue, $matches)) {
+                $startCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($matches[1]);
+                $endCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($matches[2]);
+
+                for ($col = $startCol; $col <= $endCol; $col++) {
+                    $sheet->getColumnDimensionByColumn($col)->setAutoSize(true);
+                }
+            }
+            // Case 3: data-xls-autosize="A,C,E" → auto-size specific columns
+            elseif (str_contains($autosizeValue, ',')) {
+                $columns = array_map('trim', explode(',', $autosizeValue));
+                foreach ($columns as $colLetter) {
+                    if (preg_match('/^[A-Z]+$/', $colLetter)) {
+                        $sheet->getColumnDimension($colLetter)->setAutoSize(true);
+                    }
+                }
+            }
+            // Case 4: data-xls-autosize="A" → auto-size single column
+            elseif (preg_match('/^[A-Z]+$/', $autosizeValue)) {
+                $sheet->getColumnDimension($autosizeValue)->setAutoSize(true);
             }
         }
     }
