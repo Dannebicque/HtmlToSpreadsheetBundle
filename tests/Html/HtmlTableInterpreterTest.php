@@ -756,4 +756,115 @@ class HtmlTableInterpreterTest extends TestCase
         // Vérifier que le style contient bien un background et une font
         $this->assertNotNull($style);
     }
+
+    // Priority 3: Cell Comments Tests
+
+    public function testBasicComment(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-comment="This is a comment">Cell with comment</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $comment = $sheet->getComment('A1');
+        $this->assertEquals('This is a comment', $comment->getText()->getPlainText());
+    }
+
+    public function testCommentWithAuthor(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-comment="Review this cell" data-xls-comment-author="John Doe">Data</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $comment = $sheet->getComment('A1');
+        $this->assertEquals('Review this cell', $comment->getText()->getPlainText());
+        $this->assertEquals('John Doe', $comment->getAuthor());
+    }
+
+    public function testCommentWithDimensions(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-comment="Long comment text"
+                    data-xls-comment-width="300"
+                    data-xls-comment-height="100">Cell</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $comment = $sheet->getComment('A1');
+        $this->assertEquals('300pt', $comment->getWidth());
+        $this->assertEquals('100pt', $comment->getHeight());
+    }
+
+    public function testCommentVisible(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-comment="Always visible" data-xls-comment-visible="true">Cell</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $comment = $sheet->getComment('A1');
+        $this->assertTrue($comment->getVisible());
+    }
+
+    public function testCommentWithAllAttributes(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-comment="Complete comment example"
+                    data-xls-comment-author="Alice Smith"
+                    data-xls-comment-width="250"
+                    data-xls-comment-height="80"
+                    data-xls-comment-visible="true">Important data</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $comment = $sheet->getComment('A1');
+        $this->assertEquals('Complete comment example', $comment->getText()->getPlainText());
+        $this->assertEquals('Alice Smith', $comment->getAuthor());
+        $this->assertEquals('250pt', $comment->getWidth());
+        $this->assertEquals('80pt', $comment->getHeight());
+        $this->assertTrue($comment->getVisible());
+    }
+
+    public function testCommentInvalidWidthThrowsException(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('data-xls-comment-width doit être un nombre positif');
+
+        $strictValidator = new AttributeValidator(strict: true);
+        $styler = new SheetStyler($this->registry);
+        $strictInterpreter = new HtmlTableInterpreter($styler, $strictValidator);
+
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-comment="Test" data-xls-comment-width="invalid">Cell</td></tr>
+        </table>';
+
+        $strictInterpreter->fromHtml($html);
+    }
+
+    public function testCommentInvalidVisibleThrowsException(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("data-xls-comment-visible doit être 'true' ou 'false'");
+
+        $strictValidator = new AttributeValidator(strict: true);
+        $styler = new SheetStyler($this->registry);
+        $strictInterpreter = new HtmlTableInterpreter($styler, $strictValidator);
+
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-comment="Test" data-xls-comment-visible="yes">Cell</td></tr>
+        </table>';
+
+        $strictInterpreter->fromHtml($html);
+    }
 }

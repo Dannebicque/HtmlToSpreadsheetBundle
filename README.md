@@ -128,6 +128,74 @@ Apply dynamic formatting based on cell values using a simple syntax:
 </td>
 ```
 
+## Cell Comments
+
+Add comments (notes) to cells to provide additional information, instructions, or context. Comments appear as small indicators in cells and display when hovering over them in Excel/LibreOffice.
+
+### Attributes
+
+- `data-xls-comment="text"` - Comment text (required)
+- `data-xls-comment-author="name"` - Comment author name (optional)
+- `data-xls-comment-width="pixels"` - Comment box width in pixels (optional)
+- `data-xls-comment-height="pixels"` - Comment box height in pixels (optional)
+- `data-xls-comment-visible="true"` - Make comment always visible (optional, default: false)
+
+### Examples
+
+**Basic comment:**
+```html
+<td data-xls-comment="This cell needs review">
+    Important data
+</td>
+```
+
+**Comment with author:**
+```html
+<td data-xls-comment="Please verify this value"
+    data-xls-comment-author="John Doe">
+    1,234.56
+</td>
+```
+
+**Comment with custom dimensions:**
+```html
+<td data-xls-comment="This is a longer comment that requires more space to display properly"
+    data-xls-comment-width="300"
+    data-xls-comment-height="100">
+    Complex data
+</td>
+```
+
+**Always visible comment:**
+```html
+<td data-xls-comment="IMPORTANT: Read this first"
+    data-xls-comment-visible="true">
+    Critical value
+</td>
+```
+
+**Complete example with all attributes:**
+```html
+<table data-xls-sheet="Review">
+    <tr>
+        <td data-xls-comment="This formula needs to be updated for Q2"
+            data-xls-comment-author="Finance Team"
+            data-xls-comment-width="250"
+            data-xls-comment-height="80"
+            data-xls-comment-visible="true"
+            data-xls-formula="=SUM(A1:A10)">
+        </td>
+    </tr>
+</table>
+```
+
+**Use cases:**
+- Provide instructions for data entry
+- Add review notes or approvals
+- Document formula logic
+- Flag cells requiring attention
+- Add contextual information for collaborators
+
 ## Multi-Format Export
 
 Export your spreadsheets in multiple formats:
