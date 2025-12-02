@@ -393,4 +393,197 @@ class HtmlTableInterpreterTest extends TestCase
 
         $this->assertEquals(20, $sheet->getDefaultColumnDimension()->getWidth());
     }
+
+    public function testBackgroundColor(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-bg-color="#FF0000">Red cell</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $bgColor = $sheet->getStyle('A1')->getFill()->getStartColor()->getRGB();
+        $this->assertEquals('FF0000', $bgColor);
+    }
+
+    public function testBackgroundColorWithoutHash(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-bg-color="00FF00">Green cell</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $bgColor = $sheet->getStyle('A1')->getFill()->getStartColor()->getRGB();
+        $this->assertEquals('00FF00', $bgColor);
+    }
+
+    public function testFontSize(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-font-size="18">Large text</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $fontSize = $sheet->getStyle('A1')->getFont()->getSize();
+        $this->assertEquals(18, $fontSize);
+    }
+
+    public function testBorderThin(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-border="thin">Bordered</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $borderStyle = $sheet->getStyle('A1')->getBorders()->getTop()->getBorderStyle();
+        $this->assertEquals(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, $borderStyle);
+    }
+
+    public function testBorderMedium(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-border="medium">Bordered</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $borderStyle = $sheet->getStyle('A1')->getBorders()->getTop()->getBorderStyle();
+        $this->assertEquals(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM, $borderStyle);
+    }
+
+    public function testBorderWithColor(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-border="thin" data-xls-border-color="#FF0000">Red border</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $borderColor = $sheet->getStyle('A1')->getBorders()->getTop()->getColor()->getRGB();
+        $this->assertEquals('FF0000', $borderColor);
+    }
+
+    public function testCellProtectionLocked(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-locked="true">Protected</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $isLocked = $sheet->getStyle('A1')->getProtection()->getLocked();
+        // getLocked() returns '1' for protected and '' for unprotected
+        $this->assertEquals('1', $isLocked);
+    }
+
+    public function testCellProtectionUnlocked(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-locked="false">Unlocked</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $isLocked = $sheet->getStyle('A1')->getProtection()->getLocked();
+        // getLocked() returns '' for unprotected
+        $this->assertEquals('', $isLocked);
+    }
+
+    public function testLocalImagePath(): void
+    {
+        // Create a temporary test image
+        $tmpImage = tempnam(sys_get_temp_dir(), 'test_img_');
+        $img = imagecreate(10, 10);
+        $white = imagecolorallocate($img, 255, 255, 255);
+        imagefilledrectangle($img, 0, 0, 10, 10, $white);
+        imagepng($img, $tmpImage);
+        imagedestroy($img);
+
+        try {
+            $html = '<table data-xls-sheet="Test">
+                <tr><td data-xls-image="'.$tmpImage.'">Image</td></tr>
+            </table>';
+
+            $spreadsheet = $this->interpreter->fromHtml($html);
+            $sheet = $spreadsheet->getActiveSheet();
+
+            // Check that the image was added
+            $drawings = $sheet->getDrawingCollection();
+            $this->assertCount(1, $drawings);
+            $this->assertEquals('A1', $drawings[0]->getCoordinates());
+        } finally {
+            @unlink($tmpImage);
+        }
+    }
+
+    public function testBase64ImageDataUri(): void
+    {
+        // Minimal 1x1 PNG in base64
+        $base64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+        $dataUri = 'data:image/png;base64,' . $base64;
+
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-image="'.$dataUri.'">Image</td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        // Check that the image was added
+        $drawings = $sheet->getDrawingCollection();
+        $this->assertCount(1, $drawings);
+        $this->assertEquals('A1', $drawings[0]->getCoordinates());
+    }
+
+    public function testImageWithDimensions(): void
+    {
+        // Create a temporary test image (50x25 to match 2:1 ratio)
+        $tmpImage = tempnam(sys_get_temp_dir(), 'test_img_');
+        $img = imagecreate(50, 25);
+        $white = imagecolorallocate($img, 255, 255, 255);
+        imagefilledrectangle($img, 0, 0, 50, 25, $white);
+        imagepng($img, $tmpImage);
+        imagedestroy($img);
+
+        try {
+            $html = '<table data-xls-sheet="Test">
+                <tr><td data-xls-image="'.$tmpImage.'" data-xls-img-width="100" data-xls-img-height="50">Image</td></tr>
+            </table>';
+
+            $spreadsheet = $this->interpreter->fromHtml($html);
+            $sheet = $spreadsheet->getActiveSheet();
+
+            // Check that the image was added with correct dimensions
+            $drawings = $sheet->getDrawingCollection();
+            $this->assertCount(1, $drawings);
+            // PhpSpreadsheet may adjust dimensions to maintain aspect ratio
+            $this->assertEquals(100, $drawings[0]->getWidth());
+            $this->assertEquals(50, $drawings[0]->getHeight());
+        } finally {
+            @unlink($tmpImage);
+        }
+    }
+
+    public function testInvalidImagePathThrowsException(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-image="/nonexistent/image.png">Image</td></tr>
+        </table>';
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Image introuvable');
+
+        $this->interpreter->fromHtml($html);
+    }
 }

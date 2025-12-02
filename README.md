@@ -28,10 +28,78 @@ This bundle is ideal for developers who want to use **Twig + HTML** as a DSL to 
 - ✔️ Write spreadsheets using **HTML tables** and `data-xls-*` attributes
 - ✔️ Auto-generation of **Excel sheets**, **styles**, **formulas**, **freezepanes**, **column widths**, **images**, etc.
 - ✔️ Built-in **French-oriented presets** (`money`, `date`, `float2`, `percent2`, etc.)
-- ✔️ Generate XLSX, ODS, CSV
+- ✔️ Generate **XLSX**, **ODS**, **CSV** with multi-format export support
+- ✔️ **Cell styling** (background colors, font sizes, borders, protection)
+- ✔️ **Image support** (local files, data-URI, remote HTTP/HTTPS URLs)
 - ✔️ Multiple sheets from multiple `<table data-xls-sheet="...">` tags
 - ✔️ Strict mode (invalid attributes → exception)
 - ✔️ Fully extensible (register custom styles, validators, etc.)
+
+---
+
+## 🎨 Cell Styling Attributes
+
+### Background & Font
+- `data-xls-bg-color="#FF0000"` - Set cell background color (hex format)
+- `data-xls-font-size="14"` - Set font size (numeric value)
+
+### Borders
+- `data-xls-border="thin"` - Set border style (`thin`, `medium`, `thick`, `none`)
+- `data-xls-border-color="#000000"` - Set border color (hex format)
+
+### Cell Protection
+- `data-xls-locked="true"` - Lock cell (requires sheet protection)
+- `data-xls-locked="false"` - Unlock cell for editing
+
+### Example
+```html
+<td data-xls-bg-color="#E7E6E6"
+    data-xls-font-size="16"
+    data-xls-border="medium"
+    data-xls-border-color="FF0000"
+    data-xls-locked="true">
+    Protected Cell
+</td>
+```
+
+## 📊 Multi-Format Export
+
+Export your spreadsheets in multiple formats:
+
+```php
+// XLSX (default)
+return $factory->streamWorkbook($workbook, 'export.xlsx');
+// or explicitly
+return $factory->streamWorkbook($workbook, 'export', 'xlsx');
+
+// CSV (exports first sheet only)
+return $factory->streamWorkbook($workbook, 'export', 'csv');
+
+// ODS (OpenDocument - LibreOffice compatible)
+return $factory->streamWorkbook($workbook, 'export', 'ods');
+```
+
+The file extension is automatically added if not present.
+
+## 🖼️ Image Support
+
+Insert images in cells using various sources:
+
+```html
+<!-- Local file -->
+<td data-xls-image="/path/to/image.png"
+    data-xls-img-width="100"
+    data-xls-img-height="50">
+</td>
+
+<!-- Remote URL (HTTP/HTTPS) -->
+<td data-xls-image="https://example.com/logo.png">
+</td>
+
+<!-- Base64 Data-URI -->
+<td data-xls-image="data:image/png;base64,iVBORw0KGgo...">
+</td>
+```
 
 ---
 
