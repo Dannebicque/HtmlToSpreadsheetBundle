@@ -763,6 +763,187 @@ class HtmlTableInterpreterTest extends TestCase
     {
         $html = '<table data-xls-sheet="Test" data-xls-autosize="true">
             <tr><td>Short</td><td>Much longer content</td><td>X</td></tr>
+    // =============================
+    // Cell Merging: Rowspan & Colspan
+    // =============================
+
+    public function testRowspanSimple(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-rowspan="3">A</td><td>B1</td></tr>
+            <tr><td>B2</td></tr>
+            <tr><td>B3</td></tr>
+        </table>';
+
+        $workbook = $this->interpreter->fromHtml($html);
+        $sheet = $workbook->getActiveSheet();
+
+        $this->assertEquals('A', $sheet->getCell('A1')->getValue());
+        $this->assertTrue($sheet->getCell('A1')->isInMergeRange());
+        $this->assertContains('A1:A3', $sheet->getMergeCells());
+    }
+
+    public function testColspanSimple(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-colspan="3">Header</td></tr>
+            <tr><td>A</td><td>B</td><td>C</td></tr>
+        </table>';
+
+        $workbook = $this->interpreter->fromHtml($html);
+        $sheet = $workbook->getActiveSheet();
+
+        $this->assertEquals('Header', $sheet->getCell('A1')->getValue());
+        $this->assertTrue($sheet->getCell('A1')->isInMergeRange());
+        $this->assertContains('A1:C1', $sheet->getMergeCells());
+    }
+
+    public function testRowspanAndColspanCombined(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr>
+                <td data-xls-rowspan="2" data-xls-colspan="2">Merged 2x2</td>
+                <td>C1</td>
+            </tr>
+            <tr>
+                <td>C2</td>
+            </tr>
+        </table>';
+
+        $workbook = $this->interpreter->fromHtml($html);
+        $sheet = $workbook->getActiveSheet();
+
+        $this->assertEquals('Merged 2x2', $sheet->getCell('A1')->getValue());
+        $this->assertTrue($sheet->getCell('A1')->isInMergeRange());
+        $this->assertContains('A1:B2', $sheet->getMergeCells());
+    }
+
+    public function testComplexTableWithMergedCells(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <thead>
+                <tr>
+                    <th data-xls-colspan="2">Group 1</th>
+                    <th data-xls-colspan="2">Group 2</th>
+                </tr>
+                <tr>
+                    <th>A</th><th>B</th><th>C</th><th>D</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td data-xls-rowspan="2">Row 1-2</td>
+                    <td>1</td>
+                    <td>2</td>
+                    <td>3</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td>5</td>
+                    <td>6</td>
+                </tr>
+            </tbody>
+        </table>';
+
+        $workbook = $this->interpreter->fromHtml($html);
+        $sheet = $workbook->getActiveSheet();
+
+        // Check colspan in header
+        $this->assertContains('A1:B1', $sheet->getMergeCells());
+        $this->assertContains('C1:D1', $sheet->getMergeCells());
+
+        // Check rowspan in body
+        $this->assertContains('A3:A4', $sheet->getMergeCells());
+        $this->assertEquals('Row 1-2', $sheet->getCell('A3')->getValue());
+    }
+
+    public function testRowspanWithStyling(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr>
+                <td data-xls-rowspan="2"
+                    data-xls-bg-color="#FFCC00"
+                    data-xls-font-bold="true"
+                    data-xls-align="center"
+                    data-xls-valign="center">
+                    Merged & Styled
+                </td>
+                <td>A</td>
+            </tr>
+            <tr><td>B</td></tr>
+        </table>';
+
+        $workbook = $this->interpreter->fromHtml($html);
+        $sheet = $workbook->getActiveSheet();
+
+        $this->assertContains('A1:A2', $sheet->getMergeCells());
+
+        // Check styling applied
+        $style = $sheet->getStyle('A1');
+        $this->assertEquals('FFCC00', $style->getFill()->getStartColor()->getRGB());
+        $this->assertTrue($style->getFont()->getBold());
+        $this->assertEquals('center', $style->getAlignment()->getHorizontal());
+    // Priority 3: Hyperlinks
+    // =============================
+
+    public function testHyperlinkExternal(): void
+    {
+        $html = '<table data-xls-sheet="Test"><tr><td data-xls-link="https://example.com">Click here</td></tr></table>';
+        $workbook = $this->interpreter->fromHtml($html);
+        $sheet = $workbook->getActiveSheet();
+
+        $hyperlink = $sheet->getCell('A1')->getHyperlink();
+        $this->assertEquals('https://example.com', $hyperlink->getUrl());
+
+        // Check default hyperlink style (blue, underlined)
+        $font = $sheet->getStyle('A1')->getFont();
+        $this->assertEquals('0563C1', $font->getColor()->getRGB());
+        $this->assertEquals(\PhpOffice\PhpSpreadsheet\Style\Font::UNDERLINE_SINGLE, $font->getUnderline());
+    }
+
+    public function testHyperlinkInternal(): void
+    {
+        $html = '<table data-xls-sheet="Sheet1"><tr><td data-xls-link="#Sheet2!B5">Go to Sheet2</td></tr></table>';
+        $workbook = $this->interpreter->fromHtml($html);
+        $sheet = $workbook->getActiveSheet();
+
+        $hyperlink = $sheet->getCell('A1')->getHyperlink();
+        $this->assertEquals('#Sheet2!B5', $hyperlink->getUrl());
+    }
+
+    public function testHyperlinkEmail(): void
+    {
+        $html = '<table data-xls-sheet="Test"><tr><td data-xls-link="mailto:test@example.com">Send email</td></tr></table>';
+        $workbook = $this->interpreter->fromHtml($html);
+        $sheet = $workbook->getActiveSheet();
+
+        $hyperlink = $sheet->getCell('A1')->getHyperlink();
+        $this->assertEquals('mailto:test@example.com', $hyperlink->getUrl());
+    }
+
+    public function testHyperlinkWithTooltip(): void
+    {
+        $html = '<table data-xls-sheet="Test"><tr><td data-xls-link="https://example.com" data-xls-link-tooltip="Visit our website">Link</td></tr></table>';
+        $workbook = $this->interpreter->fromHtml($html);
+        $sheet = $workbook->getActiveSheet();
+
+        $hyperlink = $sheet->getCell('A1')->getHyperlink();
+        $this->assertEquals('https://example.com', $hyperlink->getUrl());
+        $this->assertEquals('Visit our website', $hyperlink->getTooltip());
+    }
+
+    public function testHyperlinkInvalidUrlThrowsException(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('data-xls-link doit être une URL valide');
+
+        // Use strict validator for this test
+    // Priority 3: Cell Comments Tests
+
+    public function testBasicComment(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-comment="This is a comment">Cell with comment</td></tr>
         </table>';
 
         $spreadsheet = $this->interpreter->fromHtml($html);
@@ -778,6 +959,14 @@ class HtmlTableInterpreterTest extends TestCase
     {
         $html = '<table data-xls-sheet="Test" data-xls-autosize="B">
             <tr><td>A</td><td>Long content in B</td><td>C</td></tr>
+        $comment = $sheet->getComment('A1');
+        $this->assertEquals('This is a comment', $comment->getText()->getPlainText());
+    }
+
+    public function testCommentWithAuthor(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-comment="Review this cell" data-xls-comment-author="John Doe">Data</td></tr>
         </table>';
 
         $spreadsheet = $this->interpreter->fromHtml($html);
@@ -793,6 +982,17 @@ class HtmlTableInterpreterTest extends TestCase
     {
         $html = '<table data-xls-sheet="Test" data-xls-autosize="A:C">
             <tr><td>A</td><td>B</td><td>C</td><td>D</td></tr>
+        $comment = $sheet->getComment('A1');
+        $this->assertEquals('Review this cell', $comment->getText()->getPlainText());
+        $this->assertEquals('John Doe', $comment->getAuthor());
+    }
+
+    public function testCommentWithDimensions(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-comment="Long comment text"
+                    data-xls-comment-width="300"
+                    data-xls-comment-height="100">Cell</td></tr>
         </table>';
 
         $spreadsheet = $this->interpreter->fromHtml($html);
@@ -809,6 +1009,15 @@ class HtmlTableInterpreterTest extends TestCase
     {
         $html = '<table data-xls-sheet="Test" data-xls-autosize="A,C">
             <tr><td>A</td><td>B</td><td>C</td><td>D</td></tr>
+        $comment = $sheet->getComment('A1');
+        $this->assertEquals('300pt', $comment->getWidth());
+        $this->assertEquals('100pt', $comment->getHeight());
+    }
+
+    public function testCommentVisible(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-comment="Always visible" data-xls-comment-visible="true">Cell</td></tr>
         </table>';
 
         $spreadsheet = $this->interpreter->fromHtml($html);
@@ -830,6 +1039,18 @@ class HtmlTableInterpreterTest extends TestCase
                 <col data-xls-autosize="true">
             </colgroup>
             <tr><td>A</td><td>B</td><td>C</td></tr>
+        $comment = $sheet->getComment('A1');
+        $this->assertTrue($comment->getVisible());
+    }
+
+    public function testCommentWithAllAttributes(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-comment="Complete comment example"
+                    data-xls-comment-author="Alice Smith"
+                    data-xls-comment-width="250"
+                    data-xls-comment-height="80"
+                    data-xls-comment-visible="true">Important data</td></tr>
         </table>';
 
         $spreadsheet = $this->interpreter->fromHtml($html);
@@ -846,6 +1067,18 @@ class HtmlTableInterpreterTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage("data-xls-autosize doit être 'true', une colonne (A), une plage (A:D) ou une liste (A,C,E)");
+        $comment = $sheet->getComment('A1');
+        $this->assertEquals('Complete comment example', $comment->getText()->getPlainText());
+        $this->assertEquals('Alice Smith', $comment->getAuthor());
+        $this->assertEquals('250pt', $comment->getWidth());
+        $this->assertEquals('80pt', $comment->getHeight());
+        $this->assertTrue($comment->getVisible());
+    }
+
+    public function testCommentInvalidWidthThrowsException(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('data-xls-comment-width doit être un nombre positif');
 
         $strictValidator = new AttributeValidator(strict: true);
         $styler = new SheetStyler($this->registry);
@@ -853,6 +1086,25 @@ class HtmlTableInterpreterTest extends TestCase
 
         $html = '<table data-xls-sheet="Test" data-xls-autosize="invalid">
             <tr><td>Test</td></tr>
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-comment="Test" data-xls-comment-width="invalid">Cell</td></tr>
+        </table>';
+
+        $strictInterpreter->fromHtml($html);
+    }
+
+    public function testCommentInvalidVisibleThrowsException(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("data-xls-comment-visible doit être 'true' ou 'false'");
+
+        $strictValidator = new AttributeValidator(strict: true);
+        $styler = new SheetStyler($this->registry);
+        $strictInterpreter = new HtmlTableInterpreter($styler, $strictValidator);
+
+        $html = '<table data-xls-sheet="Test"><tr><td data-xls-link="not-a-valid-url">Invalid</td></tr></table>';
+        $html = '<table data-xls-sheet="Test">
+            <tr><td data-xls-comment="Test" data-xls-comment-visible="yes">Cell</td></tr>
         </table>';
 
         $strictInterpreter->fromHtml($html);
