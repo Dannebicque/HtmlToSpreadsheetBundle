@@ -24,6 +24,9 @@ final class AttributeValidator
             'data-xls-colspan'=>true,'data-xls-rowspan'=>true,'data-xls-formula'=>true,'data-xls-hyperlink'=>true,
             'data-xls-comment'=>true,'data-xls-dv-list'=>true,'data-xls-type'=>true,'data-xls-number-locale'=>true,
             'data-xls-image'=>true,'data-xls-img-width'=>true,'data-xls-img-height'=>true,
+            // New attributes
+            'data-xls-bg-color'=>true,'data-xls-font-size'=>true,'data-xls-border'=>true,
+            'data-xls-border-color'=>true,'data-xls-locked'=>true,
         ];
         $this->allowed = $allowed;
     }
@@ -61,6 +64,20 @@ final class AttributeValidator
                 if (!is_numeric($p)) throw new \InvalidArgumentException("Marge invalide: $p");
             }
         }
-        // etc. Ajoute au besoin d'autres contraintes.
+        // New attributes validation
+        if (in_array($attr, ['data-xls-bg-color', 'data-xls-border-color'], true)) {
+            if (!preg_match('/^#?[0-9A-Fa-f]{6}$/', $value)) {
+                throw new \InvalidArgumentException("Couleur invalide pour $attr: $value (attendu: format hex #RRGGBB)");
+            }
+        }
+        if ($attr === 'data-xls-font-size' && (!is_numeric($value) || (float)$value <= 0)) {
+            throw new \InvalidArgumentException("data-xls-font-size doit être un nombre positif.");
+        }
+        if ($attr === 'data-xls-border' && !in_array($value, ['thin', 'medium', 'thick', 'none'], true)) {
+            throw new \InvalidArgumentException("data-xls-border doit être 'thin', 'medium', 'thick' ou 'none'.");
+        }
+        if ($attr === 'data-xls-locked' && !in_array($value, ['true', 'false'], true)) {
+            throw new \InvalidArgumentException("data-xls-locked doit être 'true' ou 'false'.");
+        }
     }
 }

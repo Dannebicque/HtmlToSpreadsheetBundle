@@ -180,6 +180,37 @@ final class HtmlTableInterpreter
                 $this->styler->applyListValidation($sheet, $coord, explode('|', $dv));
             }
 
+            // New attributes: background color, font size, borders, protection
+            if ($bgColor = $cellNode->getAttribute('data-xls-bg-color')) {
+                $sheet->getStyle($coord)->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB(ltrim($bgColor, '#'));
+            }
+            if ($fontSize = $cellNode->getAttribute('data-xls-font-size')) {
+                $sheet->getStyle($coord)->getFont()->setSize((float)$fontSize);
+            }
+            if ($border = $cellNode->getAttribute('data-xls-border')) {
+                $borderStyle = match($border) {
+                    'thin' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'medium' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM,
+                    'thick' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THICK,
+                    'none' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_NONE,
+                    default => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                };
+                $borderColor = $cellNode->getAttribute('data-xls-border-color') ?: '000000';
+                $sheet->getStyle($coord)->applyFromArray([
+                    'borders' => [
+                        'allBorders' => [
+                            'borderStyle' => $borderStyle,
+                            'color' => ['rgb' => ltrim($borderColor, '#')],
+                        ],
+                    ],
+                ]);
+            }
+            if ($locked = $cellNode->getAttribute('data-xls-locked')) {
+                $sheet->getStyle($coord)->getProtection()->setLocked($locked === 'true');
+            }
+
             // Fusionner si besoin
             if ($colspan > 1 || $rowspan > 1) {
                 $endCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + $colspan - 1);
@@ -243,8 +274,10 @@ final class HtmlTableInterpreter
     }
 
     /**
-     * Résout le chemin de l'image. Supporte les chemins de fichiers locaux.
-     * Pour les data-URI, on pourrait les gérer en créant un fichier temporaire.
+     * Résout le chemin de l'image. Supporte :
+     * - Les chemins de fichiers locaux
+     * - Les data-URI (base64)
+     * - Les URLs distantes (HTTP/HTTPS)
      */
     private function resolveImagePath(string $src): string
     {
@@ -266,6 +299,26 @@ final class HtmlTableInterpreter
 
                 return $tmpFile;
             }
+        }
+
+        // Si c'est une URL HTTP/HTTPS
+        if (preg_match('/^https?:\/\//i', $src)) {
+            // Extraire l'extension depuis l'URL (ou utiliser jpg par défaut)
+            $extension = 'jpg';
+            if (preg_match('/\.([a-z]{3,4})(?:\?|$)/i', $src, $matches)) {
+                $extension = strtolower($matches[1]);
+            }
+
+            // Télécharger l'image dans un fichier temporaire
+            $tmpFile = tempnam(sys_get_temp_dir(), 'xls_img_') . '.' . $extension;
+            $imageData = @file_get_contents($src);
+
+            if ($imageData === false) {
+                throw new \InvalidArgumentException("Impossible de télécharger l'image: $src");
+            }
+
+            file_put_contents($tmpFile, $imageData);
+            return $tmpFile;
         }
 
         // Si le chemin n'existe pas, on lance une exception

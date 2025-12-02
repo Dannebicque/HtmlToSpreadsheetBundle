@@ -116,4 +116,107 @@ class ExcelResponseFactoryTest extends TestCase
             $this->assertStringContainsString($filename, $contentDisposition);
         }
     }
+
+    public function testCsvFormat(): void
+    {
+        $spreadsheet = new Spreadsheet();
+        $spreadsheet->getActiveSheet()->setCellValue('A1', 'Test');
+
+        $response = $this->factory->streamWorkbook($spreadsheet, 'test', 'csv');
+
+        $this->assertInstanceOf(StreamedResponse::class, $response);
+        $this->assertEquals('text/csv', $response->headers->get('Content-Type'));
+        $this->assertStringContainsString('test.csv', $response->headers->get('Content-Disposition'));
+    }
+
+    public function testOdsFormat(): void
+    {
+        $spreadsheet = new Spreadsheet();
+        $spreadsheet->getActiveSheet()->setCellValue('A1', 'Test');
+
+        $response = $this->factory->streamWorkbook($spreadsheet, 'test', 'ods');
+
+        $this->assertInstanceOf(StreamedResponse::class, $response);
+        $this->assertEquals('application/vnd.oasis.opendocument.spreadsheet', $response->headers->get('Content-Type'));
+        $this->assertStringContainsString('test.ods', $response->headers->get('Content-Disposition'));
+    }
+
+    public function testXlsxFormatExplicit(): void
+    {
+        $spreadsheet = new Spreadsheet();
+        $spreadsheet->getActiveSheet()->setCellValue('A1', 'Test');
+
+        $response = $this->factory->streamWorkbook($spreadsheet, 'test', 'xlsx');
+
+        $this->assertInstanceOf(StreamedResponse::class, $response);
+        $this->assertEquals(
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            $response->headers->get('Content-Type')
+        );
+        $this->assertStringContainsString('test.xlsx', $response->headers->get('Content-Disposition'));
+    }
+
+    public function testFormatIsCaseInsensitive(): void
+    {
+        $spreadsheet = new Spreadsheet();
+
+        $response = $this->factory->streamWorkbook($spreadsheet, 'test', 'CSV');
+        $this->assertEquals('text/csv', $response->headers->get('Content-Type'));
+
+        $response = $this->factory->streamWorkbook($spreadsheet, 'test', 'ODS');
+        $this->assertEquals('application/vnd.oasis.opendocument.spreadsheet', $response->headers->get('Content-Type'));
+    }
+
+    public function testInvalidFormatThrowsException(): void
+    {
+        $spreadsheet = new Spreadsheet();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Format non supporté: pdf');
+
+        $this->factory->streamWorkbook($spreadsheet, 'test', 'pdf');
+    }
+
+    public function testExtensionIsAutoAppended(): void
+    {
+        $spreadsheet = new Spreadsheet();
+
+        $response = $this->factory->streamWorkbook($spreadsheet, 'myfile', 'xlsx');
+        $this->assertStringContainsString('myfile.xlsx', $response->headers->get('Content-Disposition'));
+
+        $response = $this->factory->streamWorkbook($spreadsheet, 'myfile', 'csv');
+        $this->assertStringContainsString('myfile.csv', $response->headers->get('Content-Disposition'));
+
+        $response = $this->factory->streamWorkbook($spreadsheet, 'myfile', 'ods');
+        $this->assertStringContainsString('myfile.ods', $response->headers->get('Content-Disposition'));
+    }
+
+    public function testExtensionNotDuplicatedIfAlreadyPresent(): void
+    {
+        $spreadsheet = new Spreadsheet();
+
+        $response = $this->factory->streamWorkbook($spreadsheet, 'myfile.xlsx', 'xlsx');
+        $contentDisposition = $response->headers->get('Content-Disposition');
+        // Should not become myfile.xlsx.xlsx
+        $this->assertStringContainsString('myfile.xlsx', $contentDisposition);
+        $this->assertStringNotContainsString('myfile.xlsx.xlsx', $contentDisposition);
+    }
+
+    public function testCsvContentGeneration(): void
+    {
+        $spreadsheet = new Spreadsheet();
+        $spreadsheet->getActiveSheet()->setCellValue('A1', 'Hello');
+        $spreadsheet->getActiveSheet()->setCellValue('B1', 'World');
+
+        $response = $this->factory->streamWorkbook($spreadsheet, 'test', 'csv');
+
+        ob_start();
+        $response->sendContent();
+        $content = ob_get_clean();
+
+        // Check that content is not empty and contains CSV data
+        $this->assertNotEmpty($content);
+        $this->assertStringContainsString('Hello', $content);
+        $this->assertStringContainsString('World', $content);
+    }
 }

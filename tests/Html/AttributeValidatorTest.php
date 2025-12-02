@@ -319,6 +319,11 @@ class AttributeValidatorTest extends TestCase
             'data-xls-image' => '/path/to/image.png',
             'data-xls-img-width' => '100',
             'data-xls-img-height' => '100',
+            'data-xls-bg-color' => '#FF0000',
+            'data-xls-font-size' => '14',
+            'data-xls-border' => 'thin',
+            'data-xls-border-color' => '#000000',
+            'data-xls-locked' => 'true',
         ];
 
         foreach ($cellAttributes as $attr => $value) {
@@ -327,5 +332,200 @@ class AttributeValidatorTest extends TestCase
         }
 
         $this->assertTrue(true);
+    }
+
+    #[DataProvider('invalidColorProvider')]
+    public function testInvalidBackgroundColor(string $color): void
+    {
+        $validator = new AttributeValidator(strict: true);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("Couleur invalide pour data-xls-bg-color: $color");
+
+        $validator->assertAllowed('data-xls-bg-color', $color);
+    }
+
+    public static function invalidColorProvider(): array
+    {
+        return [
+            ['red'],
+            ['#GGG'],
+            ['12345'],
+            ['#12345'],
+            ['#1234567'],
+            ['rgb(255,0,0)'],
+        ];
+    }
+
+    #[DataProvider('validColorProvider')]
+    public function testValidBackgroundColor(string $color): void
+    {
+        $validator = new AttributeValidator(strict: true);
+
+        // Should not throw
+        $validator->assertAllowed('data-xls-bg-color', $color);
+
+        $this->assertTrue(true);
+    }
+
+    public static function validColorProvider(): array
+    {
+        return [
+            ['FF0000'],
+            ['#FF0000'],
+            ['ff0000'],
+            ['#ff0000'],
+            ['ABC123'],
+            ['#abc123'],
+        ];
+    }
+
+    #[DataProvider('invalidColorProvider')]
+    public function testInvalidBorderColor(string $color): void
+    {
+        $validator = new AttributeValidator(strict: true);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("Couleur invalide pour data-xls-border-color: $color");
+
+        $validator->assertAllowed('data-xls-border-color', $color);
+    }
+
+    #[DataProvider('validColorProvider')]
+    public function testValidBorderColor(string $color): void
+    {
+        $validator = new AttributeValidator(strict: true);
+
+        // Should not throw
+        $validator->assertAllowed('data-xls-border-color', $color);
+
+        $this->assertTrue(true);
+    }
+
+    #[DataProvider('invalidFontSizeProvider')]
+    public function testInvalidFontSize(string $size): void
+    {
+        $validator = new AttributeValidator(strict: true);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("data-xls-font-size doit être un nombre positif");
+
+        $validator->assertAllowed('data-xls-font-size', $size);
+    }
+
+    public static function invalidFontSizeProvider(): array
+    {
+        return [
+            ['0'],
+            ['-5'],
+            ['abc'],
+            [''],
+        ];
+    }
+
+    #[DataProvider('validFontSizeProvider')]
+    public function testValidFontSize(string $size): void
+    {
+        $validator = new AttributeValidator(strict: true);
+
+        // Should not throw
+        $validator->assertAllowed('data-xls-font-size', $size);
+
+        $this->assertTrue(true);
+    }
+
+    public static function validFontSizeProvider(): array
+    {
+        return [
+            ['10'],
+            ['12'],
+            ['18'],
+            ['14.5'],
+        ];
+    }
+
+    #[DataProvider('invalidBorderStyleProvider')]
+    public function testInvalidBorderStyle(string $style): void
+    {
+        $validator = new AttributeValidator(strict: true);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("data-xls-border doit être 'thin', 'medium', 'thick' ou 'none'");
+
+        $validator->assertAllowed('data-xls-border', $style);
+    }
+
+    public static function invalidBorderStyleProvider(): array
+    {
+        return [
+            ['solid'],
+            ['dashed'],
+            ['dotted'],
+            ['Thin'],
+            ['MEDIUM'],
+        ];
+    }
+
+    #[DataProvider('validBorderStyleProvider')]
+    public function testValidBorderStyle(string $style): void
+    {
+        $validator = new AttributeValidator(strict: true);
+
+        // Should not throw
+        $validator->assertAllowed('data-xls-border', $style);
+
+        $this->assertTrue(true);
+    }
+
+    public static function validBorderStyleProvider(): array
+    {
+        return [
+            ['thin'],
+            ['medium'],
+            ['thick'],
+            ['none'],
+        ];
+    }
+
+    #[DataProvider('invalidLockedValueProvider')]
+    public function testInvalidLockedValue(string $value): void
+    {
+        $validator = new AttributeValidator(strict: true);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("data-xls-locked doit être 'true' ou 'false'");
+
+        $validator->assertAllowed('data-xls-locked', $value);
+    }
+
+    public static function invalidLockedValueProvider(): array
+    {
+        return [
+            ['1'],
+            ['0'],
+            ['yes'],
+            ['no'],
+            ['True'],
+            ['FALSE'],
+        ];
+    }
+
+    #[DataProvider('validLockedValueProvider')]
+    public function testValidLockedValue(string $value): void
+    {
+        $validator = new AttributeValidator(strict: true);
+
+        // Should not throw
+        $validator->assertAllowed('data-xls-locked', $value);
+
+        $this->assertTrue(true);
+    }
+
+    public static function validLockedValueProvider(): array
+    {
+        return [
+            ['true'],
+            ['false'],
+        ];
     }
 }
