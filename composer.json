@@ -22,9 +22,18 @@
     "ext-libxml": "*"
   },
   "license": "MIT",
+  "require-dev": {
+    "phpunit/phpunit": "^11.0",
+    "symfony/phpunit-bridge": "^7.0 || ^8.0"
+  },
   "autoload": {
     "psr-4": {
       "Davidannebicque\\HtmlToSpreadsheetBundle\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Davidannebicque\\HtmlToSpreadsheetBundle\\Tests\\": "tests/"
     }
   },
   "authors": [

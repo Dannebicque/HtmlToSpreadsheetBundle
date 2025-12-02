@@ -55,7 +55,7 @@ final class HtmlTableInterpreter
 
             // rows & cells
             $rowIndex = 1;
-            foreach ($xp->query('./thead/tr|./tbody/tr|./tfoot/tr', $tbl) as $tr) {
+            foreach ($xp->query('./thead/tr|./tbody/tr|./tfoot/tr|./tr', $tbl) as $tr) {
                 $this->applyRow($sheet, $tr, $rowIndex, $options);
                 $rowIndex++;
             }
@@ -143,17 +143,24 @@ final class HtmlTableInterpreter
             $numberLocale = $cellNode->getAttribute('data-xls-number-locale') ?: $opt->numberLocale;
 
             $formula = $cellNode->getAttribute('data-xls-formula');
-            if ($formula !== '') {
+            $img = $cellNode->getAttribute('data-xls-image');
+
+            if ($formula !== '' && $cellNode->hasAttribute('data-xls-formula')) {
                 if ($formula[0] !== '=') $formula = "=".$formula;
                 $sheet->setCellValue($coord, $formula);
-            } elseif ($img = $cellNode->getAttribute('data-xls-image')) {
+            } elseif ($img !== '' && $cellNode->hasAttribute('data-xls-image')) {
                 $this->insertImage($sheet, $coord, $img,
                     (int)($cellNode->getAttribute('data-xls-img-width') ?: 0),
                     (int)($cellNode->getAttribute('data-xls-img-height') ?: 0)
                 );
             } else {
                 $typed = $this->castValue($value, $forcedType, $numberLocale);
-                $sheet->setCellValue($coord, $typed);
+                // Si le type est forcé à 'string', utiliser setCellValueExplicit pour éviter la conversion automatique
+                if ($forcedType === 'string') {
+                    $sheet->setCellValueExplicit($coord, $typed, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+                } else {
+                    $sheet->setCellValue($coord, $typed);
+                }
             }
 
             // Style
@@ -233,6 +240,36 @@ final class HtmlTableInterpreter
                 }
             }
         }
+    }
+
+    /**
+     * Résout le chemin de l'image. Supporte les chemins de fichiers locaux.
+     * Pour les data-URI, on pourrait les gérer en créant un fichier temporaire.
+     */
+    private function resolveImagePath(string $src): string
+    {
+        // Si c'est un chemin absolu qui existe, on le retourne directement
+        if (file_exists($src)) {
+            return $src;
+        }
+
+        // Si c'est une data-URI (data:image/png;base64,...)
+        if (str_starts_with($src, 'data:')) {
+            // Extraire le type et les données
+            if (preg_match('/^data:image\/(\w+);base64,(.+)$/', $src, $matches)) {
+                $extension = $matches[1];
+                $data = base64_decode($matches[2]);
+
+                // Créer un fichier temporaire
+                $tmpFile = tempnam(sys_get_temp_dir(), 'xls_img_') . '.' . $extension;
+                file_put_contents($tmpFile, $data);
+
+                return $tmpFile;
+            }
+        }
+
+        // Si le chemin n'existe pas, on lance une exception
+        throw new \InvalidArgumentException("Image introuvable: $src");
     }
 
     /**
