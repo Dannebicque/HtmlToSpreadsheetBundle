@@ -757,6 +757,62 @@ class HtmlTableInterpreterTest extends TestCase
         $this->assertNotNull($style);
     }
 
+    // =============================
+    // Priority 3: Hyperlinks
+    // =============================
+
+    public function testHyperlinkExternal(): void
+    {
+        $html = '<table data-xls-sheet="Test"><tr><td data-xls-link="https://example.com">Click here</td></tr></table>';
+        $workbook = $this->interpreter->fromHtml($html);
+        $sheet = $workbook->getActiveSheet();
+
+        $hyperlink = $sheet->getCell('A1')->getHyperlink();
+        $this->assertEquals('https://example.com', $hyperlink->getUrl());
+
+        // Check default hyperlink style (blue, underlined)
+        $font = $sheet->getStyle('A1')->getFont();
+        $this->assertEquals('0563C1', $font->getColor()->getRGB());
+        $this->assertEquals(\PhpOffice\PhpSpreadsheet\Style\Font::UNDERLINE_SINGLE, $font->getUnderline());
+    }
+
+    public function testHyperlinkInternal(): void
+    {
+        $html = '<table data-xls-sheet="Sheet1"><tr><td data-xls-link="#Sheet2!B5">Go to Sheet2</td></tr></table>';
+        $workbook = $this->interpreter->fromHtml($html);
+        $sheet = $workbook->getActiveSheet();
+
+        $hyperlink = $sheet->getCell('A1')->getHyperlink();
+        $this->assertEquals('#Sheet2!B5', $hyperlink->getUrl());
+    }
+
+    public function testHyperlinkEmail(): void
+    {
+        $html = '<table data-xls-sheet="Test"><tr><td data-xls-link="mailto:test@example.com">Send email</td></tr></table>';
+        $workbook = $this->interpreter->fromHtml($html);
+        $sheet = $workbook->getActiveSheet();
+
+        $hyperlink = $sheet->getCell('A1')->getHyperlink();
+        $this->assertEquals('mailto:test@example.com', $hyperlink->getUrl());
+    }
+
+    public function testHyperlinkWithTooltip(): void
+    {
+        $html = '<table data-xls-sheet="Test"><tr><td data-xls-link="https://example.com" data-xls-link-tooltip="Visit our website">Link</td></tr></table>';
+        $workbook = $this->interpreter->fromHtml($html);
+        $sheet = $workbook->getActiveSheet();
+
+        $hyperlink = $sheet->getCell('A1')->getHyperlink();
+        $this->assertEquals('https://example.com', $hyperlink->getUrl());
+        $this->assertEquals('Visit our website', $hyperlink->getTooltip());
+    }
+
+    public function testHyperlinkInvalidUrlThrowsException(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('data-xls-link doit être une URL valide');
+
+        // Use strict validator for this test
     // Priority 3: Cell Comments Tests
 
     public function testBasicComment(): void
@@ -861,6 +917,7 @@ class HtmlTableInterpreterTest extends TestCase
         $styler = new SheetStyler($this->registry);
         $strictInterpreter = new HtmlTableInterpreter($styler, $strictValidator);
 
+        $html = '<table data-xls-sheet="Test"><tr><td data-xls-link="not-a-valid-url">Invalid</td></tr></table>';
         $html = '<table data-xls-sheet="Test">
             <tr><td data-xls-comment="Test" data-xls-comment-visible="yes">Cell</td></tr>
         </table>';

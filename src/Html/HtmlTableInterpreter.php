@@ -138,6 +138,14 @@ final class HtmlTableInterpreter
             $rowspan = max(1, (int)($cellNode->getAttribute('data-xls-rowspan') ?: 1));
             $coord = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex).$rowIndex;
 
+            // Validate all data-xls-* attributes on this cell
+            foreach ($cellNode->attributes as $attr) {
+                $attrName = $attr->nodeName;
+                if (str_starts_with($attrName, 'data-xls-')) {
+                    $this->validator->assertAllowed($attrName, $attr->nodeValue);
+                }
+            }
+
             // Valeur / type / format
             $value = trim($cellNode->textContent);
             $forcedType = $cellNode->getAttribute('data-xls-type') ?: null;
@@ -271,6 +279,20 @@ final class HtmlTableInterpreter
             // Priority 2 attributes: Conditional formatting
             if ($conditional = $cellNode->getAttribute('data-xls-conditional')) {
                 $this->applyConditionalFormatting($sheet, $coord, $conditional);
+            }
+
+            // Priority 3 attributes: Hyperlinks
+            if ($link = $cellNode->getAttribute('data-xls-link')) {
+                $sheet->getCell($coord)->getHyperlink()->setUrl($link);
+
+                // Optional tooltip
+                if ($tooltip = $cellNode->getAttribute('data-xls-link-tooltip')) {
+                    $sheet->getCell($coord)->getHyperlink()->setTooltip($tooltip);
+                }
+
+                // Apply default hyperlink style (blue, underlined)
+                $sheet->getStyle($coord)->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('0563C1'));
+                $sheet->getStyle($coord)->getFont()->setUnderline(\PhpOffice\PhpSpreadsheet\Style\Font::UNDERLINE_SINGLE);
             }
 
             // Fusionner si besoin
