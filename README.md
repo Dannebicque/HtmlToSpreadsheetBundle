@@ -166,6 +166,32 @@ Insert images in cells using various sources:
 </td>
 ```
 
+## Hyperlinks
+
+Add clickable links to cells with automatic styling:
+
+```html
+<!-- External URL -->
+<td data-xls-link="https://example.com">Visit our website</td>
+
+<!-- Internal link (to another sheet/cell) -->
+<td data-xls-link="#Sheet2!A1">Go to Sheet2</td>
+
+<!-- Email link -->
+<td data-xls-link="mailto:contact@example.com">Send email</td>
+
+<!-- With custom tooltip -->
+<td data-xls-link="https://example.com"
+    data-xls-link-tooltip="Click to visit our website">
+    Link with tooltip
+</td>
+```
+
+**Features:**
+- Automatically styled links (blue color, underlined)
+- Support for external URLs, internal references, and email addresses
+- Optional tooltips on hover
+
 ---
 
 ## Installation
