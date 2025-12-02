@@ -115,6 +115,13 @@ final class HtmlTableInterpreter
             $dim = $sheet->getColumnDimensionByColumn($colIndex);
             if ($w = $col->getAttribute('data-xls-width'))  $dim->setWidth((float)$w);
             if ($col->getAttribute('data-xls-hidden') === 'true') $dim->setVisible(false);
+            if ($col->hasAttribute('data-xls-autosize')) {
+                $autosizeValue = $col->getAttribute('data-xls-autosize');
+                $this->validator->assertAllowed('data-xls-autosize', $autosizeValue);
+                if ($autosizeValue === 'true') {
+                    $dim->setAutoSize(true);
+                }
+            }
             if ($style = $col->getAttribute('data-xls-apply')) {
                 $this->styler->applyNamedStyleToColumn($sheet, $colIndex, $style);
             }
@@ -137,6 +144,14 @@ final class HtmlTableInterpreter
             $colspan = max(1, (int)($cellNode->getAttribute('data-xls-colspan') ?: 1));
             $rowspan = max(1, (int)($cellNode->getAttribute('data-xls-rowspan') ?: 1));
             $coord = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex).$rowIndex;
+
+            // Validate all data-xls-* attributes on this cell
+            foreach ($cellNode->attributes as $attr) {
+                $attrName = $attr->nodeName;
+                if (str_starts_with($attrName, 'data-xls-')) {
+                    $this->validator->assertAllowed($attrName, $attr->nodeValue);
+                }
+            }
 
             // Valeur / type / format
             $value = trim($cellNode->textContent);
@@ -176,7 +191,40 @@ final class HtmlTableInterpreter
 
             // Hyperlien / commentaire / validation liste
             if ($hl = $cellNode->getAttribute('data-xls-hyperlink')) $sheet->getCell($coord)->getHyperlink()->setUrl($hl);
-            if ($cm = $cellNode->getAttribute('data-xls-comment')) $sheet->getComment($coord)->getText()->createTextRun($cm);
+
+            // Cell comments with enhanced support
+            if ($cm = $cellNode->getAttribute('data-xls-comment')) {
+                $comment = $sheet->getComment($coord);
+                $comment->getText()->createTextRun($cm);
+
+                // Set comment author if specified
+                if ($author = $cellNode->getAttribute('data-xls-comment-author')) {
+                    $this->validator->assertAllowed('data-xls-comment-author', $author);
+                    $comment->setAuthor($author);
+                }
+
+                // Set comment dimensions if specified
+                if ($cellNode->hasAttribute('data-xls-comment-width')) {
+                    $width = $cellNode->getAttribute('data-xls-comment-width');
+                    $this->validator->assertAllowed('data-xls-comment-width', $width);
+                    $comment->setWidth((string)$width . 'pt');
+                }
+                if ($cellNode->hasAttribute('data-xls-comment-height')) {
+                    $height = $cellNode->getAttribute('data-xls-comment-height');
+                    $this->validator->assertAllowed('data-xls-comment-height', $height);
+                    $comment->setHeight((string)$height . 'pt');
+                }
+
+                // Make comment visible by default if data-xls-comment-visible is set
+                if ($cellNode->hasAttribute('data-xls-comment-visible')) {
+                    $visible = $cellNode->getAttribute('data-xls-comment-visible');
+                    $this->validator->assertAllowed('data-xls-comment-visible', $visible);
+                    if ($visible === 'true') {
+                        $comment->setVisible(true);
+                    }
+                }
+            }
+
             if ($dv = $cellNode->getAttribute('data-xls-dv-list')) {
                 $this->styler->applyListValidation($sheet, $coord, explode('|', $dv));
             }
@@ -240,6 +288,20 @@ final class HtmlTableInterpreter
                 $this->applyConditionalFormatting($sheet, $coord, $conditional);
             }
 
+            // Priority 3 attributes: Hyperlinks
+            if ($link = $cellNode->getAttribute('data-xls-link')) {
+                $sheet->getCell($coord)->getHyperlink()->setUrl($link);
+
+                // Optional tooltip
+                if ($tooltip = $cellNode->getAttribute('data-xls-link-tooltip')) {
+                    $sheet->getCell($coord)->getHyperlink()->setTooltip($tooltip);
+                }
+
+                // Apply default hyperlink style (blue, underlined)
+                $sheet->getStyle($coord)->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('0563C1'));
+                $sheet->getStyle($coord)->getFont()->setUnderline(\PhpOffice\PhpSpreadsheet\Style\Font::UNDERLINE_SINGLE);
+            }
+
             // Fusionner si besoin
             if ($colspan > 1 || $rowspan > 1) {
                 $endCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + $colspan - 1);
@@ -292,12 +354,41 @@ final class HtmlTableInterpreter
     private function postProcessTable(Worksheet $sheet, \DOMElement $tbl): void
     {
         if ($tbl->hasAttribute('data-xls-autosize')) {
-            foreach (explode(':', $tbl->getAttribute('data-xls-autosize')) as $range) {
-                [$start, $end] = explode('A', str_replace([':', ' '], [' A', ''], $range)) + [1 => null];
-                // simplifié: autosize par lettres A..D
-                foreach (range($range[0], $range[-1]) as $colLetter) {
-                    $sheet->getColumnDimension($colLetter)->setAutoSize(true);
+            $autosizeValue = $tbl->getAttribute('data-xls-autosize');
+
+            // Validate the attribute value
+            $this->validator->assertAllowed('data-xls-autosize', $autosizeValue);
+
+            // Case 1: data-xls-autosize="true" → auto-size all columns
+            if ($autosizeValue === 'true') {
+                $highestColumn = $sheet->getHighestColumn();
+                $highestColumnIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn);
+
+                for ($col = 1; $col <= $highestColumnIndex; $col++) {
+                    $sheet->getColumnDimensionByColumn($col)->setAutoSize(true);
                 }
+            }
+            // Case 2: data-xls-autosize="A:D" → auto-size columns A through D
+            elseif (preg_match('/^([A-Z]+):([A-Z]+)$/', $autosizeValue, $matches)) {
+                $startCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($matches[1]);
+                $endCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($matches[2]);
+
+                for ($col = $startCol; $col <= $endCol; $col++) {
+                    $sheet->getColumnDimensionByColumn($col)->setAutoSize(true);
+                }
+            }
+            // Case 3: data-xls-autosize="A,C,E" → auto-size specific columns
+            elseif (str_contains($autosizeValue, ',')) {
+                $columns = array_map('trim', explode(',', $autosizeValue));
+                foreach ($columns as $colLetter) {
+                    if (preg_match('/^[A-Z]+$/', $colLetter)) {
+                        $sheet->getColumnDimension($colLetter)->setAutoSize(true);
+                    }
+                }
+            }
+            // Case 4: data-xls-autosize="A" → auto-size single column
+            elseif (preg_match('/^[A-Z]+$/', $autosizeValue)) {
+                $sheet->getColumnDimension($autosizeValue)->setAutoSize(true);
             }
         }
     }
