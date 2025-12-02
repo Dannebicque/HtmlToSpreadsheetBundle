@@ -208,9 +208,47 @@ html_to_spreadsheet:
 ```
 
 
-## Example
+## Quick Start
 
-### Contrôleur
+### Simple Usage (Recommended)
+
+Use the `SpreadsheetRenderer` service or `SpreadsheetTrait` for a one-liner solution:
+
+```php
+<?php
+
+namespace App\Controller;
+
+use Davidannebicque\HtmlToSpreadsheetBundle\Controller\SpreadsheetTrait;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Attribute\Route;
+
+final class ReportController extends AbstractController
+{
+    use SpreadsheetTrait;
+
+    #[Route('/export', name: 'app_export')]
+    public function export(): Response
+    {
+        $data = [
+            ['name' => 'John Doe', 'amount' => 1234.56, 'date' => new \DateTime('2024-02-01')],
+            ['name' => 'Anna Smith', 'amount' => 987.45, 'date' => new \DateTime('2024-02-02')],
+        ];
+
+        // One-liner: render template + convert + stream
+        return $this->renderSpreadsheet(
+            'reports/export.html.twig',
+            ['lines' => $data],
+            'export.xlsx'
+        );
+    }
+}
+```
+
+### Advanced Usage
+
+For more control, use the services directly:
 
 ```php
 <?php
@@ -218,43 +256,87 @@ html_to_spreadsheet:
 namespace App\Controller;
 
 use Davidannebicque\HtmlToSpreadsheetBundle\Html\HtmlTableInterpreter;
+use Davidannebicque\HtmlToSpreadsheetBundle\Html\HtmlToXlsxOptions;
 use Davidannebicque\HtmlToSpreadsheetBundle\Spreadsheet\Response\ExcelResponseFactory;
+use Davidannebicque\HtmlToSpreadsheetBundle\Spreadsheet\SpreadsheetRenderer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
-use Davidannebicque\HtmlToSpreadsheetBundle\Html\HtmlToXlsxOptions;
 use Twig\Environment;
 
-final class DemoController extends AbstractController
+final class AdvancedController extends AbstractController
 {
-    #[Route('/demo', name: 'app_demo')]
-     public function export(
+    #[Route('/export-advanced', name: 'app_export_advanced')]
+    public function exportWithRenderer(SpreadsheetRenderer $renderer): Response
+    {
+        $data = [
+            ['nom' => 'Doe', 'prenom' => 'John', 'montant' => 1234.56, 'date' => new \DateTime('2024-02-01')],
+            ['nom' => 'Smith', 'prenom' => 'Anna', 'montant' => 987.45, 'date' => new \DateTime('2024-02-02')],
+        ];
+
+        // Using the renderer service
+        return $renderer->renderFromTemplate(
+            'demo/index.html.twig',
+            ['lignes' => $data],
+            'export-test.xlsx'
+        );
+    }
+
+    #[Route('/export-manual', name: 'app_export_manual')]
+    public function exportManual(
         Environment $twig,
         HtmlTableInterpreter $interpreter,
         ExcelResponseFactory $factory
     ): Response {
-        // Données d’exemple
         $lines = [
-            ['nom' => 'Doe',   'prenom' => 'John',  'montant' => 1234.56, 'date' => new \DateTime('2024-02-01')],
-            ['nom' => 'Smith', 'prenom' => 'Anna',  'montant' => 987.45,  'date' => new \DateTime('2024-02-02')],
-            ['nom' => 'Lemaire','prenom' => 'Lucie','montant' => 150.00,  'date' => new \DateTime('2024-02-03')],
+            ['nom' => 'Doe', 'prenom' => 'John', 'montant' => 1234.56, 'date' => new \DateTime('2024-02-01')],
+            ['nom' => 'Smith', 'prenom' => 'Anna', 'montant' => 987.45, 'date' => new \DateTime('2024-02-02')],
+            ['nom' => 'Lemaire', 'prenom' => 'Lucie', 'montant' => 150.00, 'date' => new \DateTime('2024-02-03')],
         ];
 
-        // 1) Rend la vue HTML annotée
-        $html = $twig->render('demo/index.html.twig', [
-            'lignes' => $lines,
-        ]);
+        // 1) Render HTML template
+        $html = $twig->render('demo/index.html.twig', ['lignes' => $lines]);
 
-        // 2) Convertit en Spreadsheet
+        // 2) Convert to Spreadsheet
         $workbook = $interpreter->fromHtml(
             $html,
-            new HtmlToXlsxOptions(strict: true) // strict = validation des attributes
+            new HtmlToXlsxOptions(strict: true)
         );
 
-        // 3) Renvoie le fichier Excel
+        // 3) Stream as file download
         return $factory->streamWorkbook($workbook, 'export-test.xlsx');
     }
+
+    #[Route('/create-workbook', name: 'app_create_workbook')]
+    public function createWorkbook(SpreadsheetRenderer $renderer): Response
+    {
+        // Get the workbook object without streaming (for further manipulation)
+        $workbook = $renderer->createFromTemplate(
+            'demo/index.html.twig',
+            ['lignes' => [/* data */]]
+        );
+
+        // Manipulate the workbook...
+        $workbook->getActiveSheet()->getCell('A1')->setValue('Modified');
+
+        // Then stream it manually
+        $factory = new ExcelResponseFactory();
+        return $factory->streamWorkbook($workbook, 'custom.xlsx');
+    }
 }
+```
+
+### Export Formats
+
+```php
+// XLSX (default)
+return $this->renderSpreadsheet('template.html.twig', $data, 'export.xlsx');
+
+// ODS (LibreOffice)
+return $this->renderSpreadsheet('template.html.twig', $data, 'export.ods');
+
+// CSV (first sheet only)
+return $this->renderSpreadsheet('template.html.twig', $data, 'export.csv');
 ```
 
 ### La vue (twig)
