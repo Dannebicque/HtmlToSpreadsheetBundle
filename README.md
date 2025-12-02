@@ -23,21 +23,21 @@ This bundle is ideal for developers who want to use **Twig + HTML** as a DSL to 
 - Symfony 6.4+
 - PhpSpreadsheet 4.x|5.x (maybe 3  also compatible, not tested)
 
-## ✨ Features
+## Features
 
-- ✔️ Write spreadsheets using **HTML tables** and `data-xls-*` attributes
-- ✔️ Auto-generation of **Excel sheets**, **styles**, **formulas**, **freezepanes**, **column widths**, **images**, etc.
-- ✔️ Built-in **French-oriented presets** (`money`, `date`, `float2`, `percent2`, etc.)
-- ✔️ Generate **XLSX**, **ODS**, **CSV** with multi-format export support
-- ✔️ **Cell styling** (background colors, font sizes, borders, protection)
-- ✔️ **Image support** (local files, data-URI, remote HTTP/HTTPS URLs)
-- ✔️ Multiple sheets from multiple `<table data-xls-sheet="...">` tags
-- ✔️ Strict mode (invalid attributes → exception)
-- ✔️ Fully extensible (register custom styles, validators, etc.)
+- Write spreadsheets using **HTML tables** and `data-xls-*` attributes
+- Auto-generation of **Excel sheets**, **styles**, **formulas**, **freezepanes**, **column widths**, **images**, etc.
+- Built-in **French-oriented presets** (`money`, `date`, `float2`, `percent2`, etc.)
+- Generate **XLSX**, **ODS**, **CSV** with multi-format export support
+- **Cell styling** (background colors, font sizes, borders, protection)
+- **Image support** (local files, data-URI, remote HTTP/HTTPS URLs)
+- Multiple sheets from multiple `<table data-xls-sheet="...">` tags
+- Strict mode (invalid attributes → exception)
+- Fully extensible (register custom styles, validators, etc.)
 
 ---
 
-## 🎨 Cell Styling Attributes
+## Cell Styling Attributes
 
 ### Background & Font
 - `data-xls-bg-color="#FF0000"` - Set cell background color (hex format)
@@ -62,7 +62,7 @@ This bundle is ideal for developers who want to use **Twig + HTML** as a DSL to 
 </td>
 ```
 
-## ✍️ Font Styling
+## Font Styling
 
 Control font appearance with these attributes:
 
@@ -86,7 +86,7 @@ Control font appearance with these attributes:
 </td>
 ```
 
-## 🎯 Conditional Formatting
+## Conditional Formatting
 
 Apply dynamic formatting based on cell values using a simple syntax:
 
@@ -127,7 +127,7 @@ Apply dynamic formatting based on cell values using a simple syntax:
 </td>
 ```
 
-## 📊 Multi-Format Export
+## Multi-Format Export
 
 Export your spreadsheets in multiple formats:
 
@@ -146,7 +146,7 @@ return $factory->streamWorkbook($workbook, 'export', 'ods');
 
 The file extension is automatically added if not present.
 
-## 🖼️ Image Support
+## Image Support
 
 Insert images in cells using various sources:
 
