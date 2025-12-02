@@ -168,29 +168,70 @@ Insert images in cells using various sources:
 
 ## Hyperlinks
 
-Add clickable links to cells with automatic styling:
+Add clickable links to cells with automatic styling. Links are rendered as blue, underlined text in Excel/ODS files.
 
+### Attributes
+
+- `data-xls-link="URL"` - Hyperlink URL (required)
+- `data-xls-link-tooltip="text"` - Tooltip displayed on hover (optional)
+
+### Supported Link Types
+
+**External URLs:**
 ```html
-<!-- External URL -->
 <td data-xls-link="https://example.com">Visit our website</td>
+<td data-xls-link="https://github.com/user/repo">GitHub Repository</td>
+```
 
-<!-- Internal link (to another sheet/cell) -->
-<td data-xls-link="#Sheet2!A1">Go to Sheet2</td>
+**Internal References (to another sheet/cell):**
+```html
+<!-- Link to another sheet -->
+<td data-xls-link="#Sheet2!A1">Go to Sheet2, cell A1</td>
 
-<!-- Email link -->
+<!-- Link to cell in same sheet -->
+<td data-xls-link="#B10">Jump to B10</td>
+
+<!-- Link with spaces in sheet name -->
+<td data-xls-link="#'My Data'!C5">Link to "My Data" sheet</td>
+```
+
+**Email Addresses:**
+```html
+<!-- Simple email -->
 <td data-xls-link="mailto:contact@example.com">Send email</td>
 
-<!-- With custom tooltip -->
-<td data-xls-link="https://example.com"
-    data-xls-link-tooltip="Click to visit our website">
-    Link with tooltip
+<!-- Email with subject -->
+<td data-xls-link="mailto:support@example.com?subject=Help Request">Contact Support</td>
+```
+
+**With Tooltips:**
+```html
+<td data-xls-link="https://symfony.com/doc"
+    data-xls-link-tooltip="Click to view Symfony documentation">
+    Symfony Docs
 </td>
 ```
 
-**Features:**
-- Automatically styled links (blue color, underlined)
-- Support for external URLs, internal references, and email addresses
-- Optional tooltips on hover
+### Combining with Other Styles
+
+Hyperlinks can be combined with other cell styling:
+
+```html
+<td data-xls-link="https://example.com"
+    data-xls-bg-color="#FFFFCC"
+    data-xls-font-bold="true"
+    data-xls-link-tooltip="Important link">
+    Highlighted Link
+</td>
+```
+
+### Automatic Styling
+
+Hyperlinks are automatically styled with:
+- **Font color:** Blue (#0563C1)
+- **Text decoration:** Underlined
+
+These default styles can be overridden using `data-xls-font-color` and `data-xls-font-underline` attributes.
 
 ---
 
