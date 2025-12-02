@@ -26,6 +26,7 @@ This bundle is ideal for developers who want to use **Twig + HTML** as a DSL to 
 ## Features
 
 - Write spreadsheets using **HTML tables** and `data-xls-*` attributes
+- **One-liner rendering** with `SpreadsheetRenderer` service or `SpreadsheetTrait` for controllers
 - Auto-generation of **Excel sheets**, **styles**, **formulas**, **freezepanes**, **column widths**, **images**, etc.
 - Built-in **French-oriented presets** (`money`, `date`, `float2`, `percent2`, etc.)
 - Generate **XLSX**, **ODS**, **CSV** with multi-format export support
