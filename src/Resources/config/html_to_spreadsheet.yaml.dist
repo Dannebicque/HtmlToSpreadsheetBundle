@@ -1,0 +1,47 @@
+# Configuration du bundle HtmlToSpreadsheet
+# Copiez ce fichier dans config/packages/html_to_spreadsheet.yaml
+
+html_to_spreadsheet:
+    # Mode strict : valide la structure HTML
+    strict: true
+
+    # Inclure les styles prédéfinis du bundle
+    # Styles disponibles: th, int, float2, float3, percent2, money,
+    # money_accounting, date, date_long, time, datetime, duration,
+    # bool_center, text_wrap, warn
+    include_builtins: true
+
+    # Répertoire temporaire (optionnel)
+    # temp_dir: '%kernel.cache_dir%/html_to_spreadsheet'
+
+    # Personnalisez ou ajoutez vos propres styles
+    default_styles:
+        # Exemple : style pour un en-tête personnalisé
+        custom_header:
+            font:
+                bold: true
+                size: 14
+                color: 'FFFFFF'
+            fill:
+                fillType: 'solid'
+                color: '4472C4'
+            alignment:
+                horizontal: 'center'
+                vertical: 'center'
+
+        # Exemple : style pour les montants négatifs en rouge
+        negative_amount:
+            numberFormat: '#,##0.00'
+            font:
+                color: 'FF0000'
+
+        # Exemple : cellule avec bordures
+        bordered:
+            borders:
+                allBorders:
+                    borderStyle: 'thin'
+                    color: '000000'
+
+# Pour utiliser ces styles dans votre HTML :
+# <td data-style="custom_header">Mon en-tête</td>
+# <td data-style="negative_amount">-1234.56</td>

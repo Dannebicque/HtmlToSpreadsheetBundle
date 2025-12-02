@@ -9,32 +9,7 @@ final class StyleRegistry
 
     public function __construct(array $defaultStyles = [])
     {
-        // Presets internes, garantis
-        $builtins = [
-            'th' => [
-                'font' => ['bold' => true, 'color' => ['argb' => 'FF333333']],
-                'fill' => ['fillType' => 'solid', 'color' => ['argb' => 'FFEEEEEE']],
-                'alignment' => ['horizontal' => 'center', 'vertical' => 'center', 'wrapText' => true],
-                'borders' => [
-                    'bottom' => ['borderStyle' => 'thin', 'color' => ['argb' => 'FFCCCCCC']],
-                ],
-            ],
-            'money' => [
-                'alignment' => ['horizontal' => 'right'],
-                'numberFormat' => ['formatCode' => '# ##0,00 [$€-fr-FR]'],
-            ],
-            'date' => [
-                'alignment' => ['horizontal' => 'center'],
-                'numberFormat' => ['formatCode' => 'dd/mm/yyyy'],
-            ],
-            'percent2' => [
-                'alignment' => ['horizontal' => 'right'],
-                'numberFormat' => ['formatCode' => '0,00%'],
-            ],
-        ];
-
-        // Ce que tu passes en config écrase ou complète les builtins
-        $this->styles = array_merge($builtins, $defaultStyles);
+        $this->styles =  $defaultStyles;
     }
 
     public function has(string $name): bool

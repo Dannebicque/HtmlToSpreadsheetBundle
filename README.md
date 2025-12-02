@@ -41,6 +41,40 @@ This bundle is ideal for developers who want to use **Twig + HTML** as a DSL to 
 composer require davidannebicque/html-to-spreadsheet-bundle
 ```
 
+## Configuration
+
+Create the file `config/packages/html_to_spreadsheet.yaml` :
+```yaml
+html_to_spreadsheet:
+    strict: true
+    include_builtins: true
+```
+
+A complete example file with all available styles is provided in:
+`vendor/davidannebicque/html-to-spreadsheet-bundle/src/Resources/config/html_to_spreadsheet.yaml.dist`
+
+### Styles prédéfinis disponibles
+
+- `th` : En-tête de tableau (gras, centré)
+- `money` : Format monétaire Euro
+- `date` : Format date courte
+- `int` : Nombre entier
+- `percent2` : Pourcentage à 2 décimales
+- ... (voir la documentation complète)
+
+### Créer des styles personnalisés
+```yaml
+html_to_spreadsheet:
+    default_styles:
+        mon_style:
+            font:
+                bold: true
+                color: 'FF0000'
+            alignment:
+                horizontal: 'center'
+```
+
+
 ## Example
 
 ### Contrôleur

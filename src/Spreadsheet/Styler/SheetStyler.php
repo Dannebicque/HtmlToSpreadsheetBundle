@@ -2,6 +2,7 @@
 // src/Excel/Styler/SheetStyler.php
 namespace Davidannebicque\HtmlToSpreadsheetBundle\Spreadsheet\Styler;
 
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
@@ -19,7 +20,7 @@ final class SheetStyler
     public function applyNamedStyleToColumn(Worksheet $sheet, int $colIndex, string $name): void
     {
         $arr = $this->registry->get($name);
-        $letter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
+        $letter = Coordinate::stringFromColumnIndex($colIndex);
         $sheet->getStyle($letter.':'.$letter)->applyFromArray($arr);
     }
 
