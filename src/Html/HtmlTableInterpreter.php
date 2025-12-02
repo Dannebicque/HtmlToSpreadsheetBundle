@@ -184,7 +184,40 @@ final class HtmlTableInterpreter
 
             // Hyperlien / commentaire / validation liste
             if ($hl = $cellNode->getAttribute('data-xls-hyperlink')) $sheet->getCell($coord)->getHyperlink()->setUrl($hl);
-            if ($cm = $cellNode->getAttribute('data-xls-comment')) $sheet->getComment($coord)->getText()->createTextRun($cm);
+
+            // Cell comments with enhanced support
+            if ($cm = $cellNode->getAttribute('data-xls-comment')) {
+                $comment = $sheet->getComment($coord);
+                $comment->getText()->createTextRun($cm);
+
+                // Set comment author if specified
+                if ($author = $cellNode->getAttribute('data-xls-comment-author')) {
+                    $this->validator->assertAllowed('data-xls-comment-author', $author);
+                    $comment->setAuthor($author);
+                }
+
+                // Set comment dimensions if specified
+                if ($cellNode->hasAttribute('data-xls-comment-width')) {
+                    $width = $cellNode->getAttribute('data-xls-comment-width');
+                    $this->validator->assertAllowed('data-xls-comment-width', $width);
+                    $comment->setWidth((string)$width . 'pt');
+                }
+                if ($cellNode->hasAttribute('data-xls-comment-height')) {
+                    $height = $cellNode->getAttribute('data-xls-comment-height');
+                    $this->validator->assertAllowed('data-xls-comment-height', $height);
+                    $comment->setHeight((string)$height . 'pt');
+                }
+
+                // Make comment visible by default if data-xls-comment-visible is set
+                if ($cellNode->hasAttribute('data-xls-comment-visible')) {
+                    $visible = $cellNode->getAttribute('data-xls-comment-visible');
+                    $this->validator->assertAllowed('data-xls-comment-visible', $visible);
+                    if ($visible === 'true') {
+                        $comment->setVisible(true);
+                    }
+                }
+            }
+
             if ($dv = $cellNode->getAttribute('data-xls-dv-list')) {
                 $this->styler->applyListValidation($sheet, $coord, explode('|', $dv));
             }
