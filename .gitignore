@@ -2,3 +2,5 @@ vendor/
 .phpunit.cache/
 coverage/
 phpunit.xml
+composer.lock
+.idea/

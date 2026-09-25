@@ -179,11 +179,13 @@ Control font appearance with these attributes:
 
 ## Conditional Formatting
 
+### For cells
+
 Apply dynamic formatting based on cell values using a simple syntax:
 
 **Syntax:** `data-xls-conditional="condition|style1|style2..."`
 
-### Available Conditions
+#### Available Conditions
 - `value>X` - Greater than
 - `value<X` - Less than
 - `value>=X` - Greater than or equal
@@ -192,12 +194,12 @@ Apply dynamic formatting based on cell values using a simple syntax:
 - `value!=X` - Not equal to
 - `between:min:max` - Value between min and max
 
-### Available Styles
+#### Available Styles
 - `bg:RRGGBB` - Background color (hex without #)
 - `font:RRGGBB` - Font color (hex without #)
 - `bold` - Bold text
 
-### Examples
+#### Examples
 ```html
 <!-- Highlight negative values in red -->
 <td data-xls-type="number"
@@ -217,6 +219,17 @@ Apply dynamic formatting based on cell values using a simple syntax:
     250.00
 </td>
 ```
+
+### For rows
+
+Apply a condition to an entire row by adding `data-xls-conditional` on the `<tr>` element. The format is the same as for cells: `condition|style1|style2...`. By default the condition targets the first cell of the row; to target a specific column use `data-xls-conditional-target` (column letter or 1-based index).
+
+- Target by column letter:
+```html
+<tr data-xls-conditional="value<0|bg:FFCCCC|font:FF0000" data-xls-conditional-target="D">
+  <td>Category</td><td>Product</td><td>Quantity</td><td>-150.50</td>
+</tr>
+
 
 ## Auto-size Columns
 

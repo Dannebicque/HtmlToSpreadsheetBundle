@@ -48,6 +48,35 @@ class HtmlTableInterpreterTest extends TestCase
         $this->assertEquals('World', $spreadsheet->getActiveSheet()->getCell('B1')->getValue());
     }
 
+    public function testRichTextInCellWithDiffStrikethroughAndBold(): void
+    {
+        $html = '<table data-xls-sheet="Sheet1">
+            <tr><td><s>Ancien Libelle</s><br/><b data-xls-font-color="#16A34A">Nouveau Libelle</b></td></tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $cell = $spreadsheet->getActiveSheet()->getCell('A1');
+        $value = $cell->getValue();
+
+        $this->assertInstanceOf(\PhpOffice\PhpSpreadsheet\RichText\RichText::class, $value);
+        $this->assertEquals("Ancien Libelle\nNouveau Libelle", $value->getPlainText());
+        $this->assertTrue($spreadsheet->getActiveSheet()->getStyle('A1')->getAlignment()->getWrapText());
+
+        $elements = $value->getRichTextElements();
+        $this->assertCount(3, $elements);
+
+        // Strikethrough run
+        $this->assertTrue($elements[0]->getFont()->getStrikethrough());
+        $this->assertEquals('DC2626', $elements[0]->getFont()->getColor()->getRGB());
+
+        // Newline
+        $this->assertEquals("\n", $elements[1]->getText());
+
+        // Bold green run
+        $this->assertTrue($elements[2]->getFont()->getBold());
+        $this->assertEquals('16A34A', $elements[2]->getFont()->getColor()->getRGB());
+    }
+
     public function testFromHtmlCreatesMultipleSheets(): void
     {
         $html = '
@@ -763,6 +792,13 @@ class HtmlTableInterpreterTest extends TestCase
     {
         $html = '<table data-xls-sheet="Test" data-xls-autosize="true">
             <tr><td>Short</td><td>Much longer content</td><td>X</td></tr>
+        </table>';
+
+        $workbook = $this->interpreter->fromHtml($html);
+        $sheet = $workbook->getActiveSheet();
+        $this->assertTrue($sheet->getColumnDimension('A')->getAutoSize());
+    }
+
     // =============================
     // Cell Merging: Rowspan & Colspan
     // =============================
@@ -883,6 +919,9 @@ class HtmlTableInterpreterTest extends TestCase
         $this->assertEquals('FFCC00', $style->getFill()->getStartColor()->getRGB());
         $this->assertTrue($style->getFont()->getBold());
         $this->assertEquals('center', $style->getAlignment()->getHorizontal());
+    }
+
+    // =============================
     // Priority 3: Hyperlinks
     // =============================
 
@@ -937,8 +976,17 @@ class HtmlTableInterpreterTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('data-xls-link doit être une URL valide');
 
-        // Use strict validator for this test
+        $strictValidator = new AttributeValidator(strict: true);
+        $styler = new SheetStyler($this->registry);
+        $strictInterpreter = new HtmlTableInterpreter($styler, $strictValidator);
+
+        $html = '<table data-xls-sheet="Test"><tr><td data-xls-link="not-a-valid-url">Invalid</td></tr></table>';
+        $strictInterpreter->fromHtml($html);
+    }
+
+    // =============================
     // Priority 3: Cell Comments Tests
+    // =============================
 
     public function testBasicComment(): void
     {
@@ -949,16 +997,6 @@ class HtmlTableInterpreterTest extends TestCase
         $spreadsheet = $this->interpreter->fromHtml($html);
         $sheet = $spreadsheet->getActiveSheet();
 
-        // Check that all columns have autosize enabled
-        $this->assertTrue($sheet->getColumnDimension('A')->getAutoSize());
-        $this->assertTrue($sheet->getColumnDimension('B')->getAutoSize());
-        $this->assertTrue($sheet->getColumnDimension('C')->getAutoSize());
-    }
-
-    public function testAutosizeSingleColumn(): void
-    {
-        $html = '<table data-xls-sheet="Test" data-xls-autosize="B">
-            <tr><td>A</td><td>Long content in B</td><td>C</td></tr>
         $comment = $sheet->getComment('A1');
         $this->assertEquals('This is a comment', $comment->getText()->getPlainText());
     }
@@ -972,16 +1010,6 @@ class HtmlTableInterpreterTest extends TestCase
         $spreadsheet = $this->interpreter->fromHtml($html);
         $sheet = $spreadsheet->getActiveSheet();
 
-        // Only column B should have autosize
-        $this->assertFalse($sheet->getColumnDimension('A')->getAutoSize());
-        $this->assertTrue($sheet->getColumnDimension('B')->getAutoSize());
-        $this->assertFalse($sheet->getColumnDimension('C')->getAutoSize());
-    }
-
-    public function testAutosizeColumnRange(): void
-    {
-        $html = '<table data-xls-sheet="Test" data-xls-autosize="A:C">
-            <tr><td>A</td><td>B</td><td>C</td><td>D</td></tr>
         $comment = $sheet->getComment('A1');
         $this->assertEquals('Review this cell', $comment->getText()->getPlainText());
         $this->assertEquals('John Doe', $comment->getAuthor());
@@ -998,17 +1026,6 @@ class HtmlTableInterpreterTest extends TestCase
         $spreadsheet = $this->interpreter->fromHtml($html);
         $sheet = $spreadsheet->getActiveSheet();
 
-        // Columns A, B, C should have autosize
-        $this->assertTrue($sheet->getColumnDimension('A')->getAutoSize());
-        $this->assertTrue($sheet->getColumnDimension('B')->getAutoSize());
-        $this->assertTrue($sheet->getColumnDimension('C')->getAutoSize());
-        $this->assertFalse($sheet->getColumnDimension('D')->getAutoSize());
-    }
-
-    public function testAutosizeSpecificColumns(): void
-    {
-        $html = '<table data-xls-sheet="Test" data-xls-autosize="A,C">
-            <tr><td>A</td><td>B</td><td>C</td><td>D</td></tr>
         $comment = $sheet->getComment('A1');
         $this->assertEquals('300pt', $comment->getWidth());
         $this->assertEquals('100pt', $comment->getHeight());
@@ -1023,22 +1040,6 @@ class HtmlTableInterpreterTest extends TestCase
         $spreadsheet = $this->interpreter->fromHtml($html);
         $sheet = $spreadsheet->getActiveSheet();
 
-        // Only columns A and C should have autosize
-        $this->assertTrue($sheet->getColumnDimension('A')->getAutoSize());
-        $this->assertFalse($sheet->getColumnDimension('B')->getAutoSize());
-        $this->assertTrue($sheet->getColumnDimension('C')->getAutoSize());
-        $this->assertFalse($sheet->getColumnDimension('D')->getAutoSize());
-    }
-
-    public function testAutosizeOnColElement(): void
-    {
-        $html = '<table data-xls-sheet="Test">
-            <colgroup>
-                <col data-xls-autosize="true">
-                <col data-xls-width="50">
-                <col data-xls-autosize="true">
-            </colgroup>
-            <tr><td>A</td><td>B</td><td>C</td></tr>
         $comment = $sheet->getComment('A1');
         $this->assertTrue($comment->getVisible());
     }
@@ -1056,17 +1057,6 @@ class HtmlTableInterpreterTest extends TestCase
         $spreadsheet = $this->interpreter->fromHtml($html);
         $sheet = $spreadsheet->getActiveSheet();
 
-        // Columns A and C should have autosize, B should have fixed width
-        $this->assertTrue($sheet->getColumnDimension('A')->getAutoSize());
-        $this->assertFalse($sheet->getColumnDimension('B')->getAutoSize());
-        $this->assertEquals(50, $sheet->getColumnDimension('B')->getWidth());
-        $this->assertTrue($sheet->getColumnDimension('C')->getAutoSize());
-    }
-
-    public function testAutosizeInvalidValueThrowsException(): void
-    {
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage("data-xls-autosize doit être 'true', une colonne (A), une plage (A:D) ou une liste (A,C,E)");
         $comment = $sheet->getComment('A1');
         $this->assertEquals('Complete comment example', $comment->getText()->getPlainText());
         $this->assertEquals('Alice Smith', $comment->getAuthor());
@@ -1084,8 +1074,6 @@ class HtmlTableInterpreterTest extends TestCase
         $styler = new SheetStyler($this->registry);
         $strictInterpreter = new HtmlTableInterpreter($styler, $strictValidator);
 
-        $html = '<table data-xls-sheet="Test" data-xls-autosize="invalid">
-            <tr><td>Test</td></tr>
         $html = '<table data-xls-sheet="Test">
             <tr><td data-xls-comment="Test" data-xls-comment-width="invalid">Cell</td></tr>
         </table>';
@@ -1102,11 +1090,55 @@ class HtmlTableInterpreterTest extends TestCase
         $styler = new SheetStyler($this->registry);
         $strictInterpreter = new HtmlTableInterpreter($styler, $strictValidator);
 
-        $html = '<table data-xls-sheet="Test"><tr><td data-xls-link="not-a-valid-url">Invalid</td></tr></table>';
         $html = '<table data-xls-sheet="Test">
             <tr><td data-xls-comment="Test" data-xls-comment-visible="yes">Cell</td></tr>
         </table>';
 
         $strictInterpreter->fromHtml($html);
+    }
+
+    public function testRichTextWithDiffInline(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr>
+                <td>
+                    <s data-xls-font-color="#DC2626">Ancien Parcours</s><br/><b data-xls-font-color="#16A34A">Nouveau Parcours</b>
+                </td>
+            </tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $cellValue = $sheet->getCell('A1')->getValue();
+        $this->assertInstanceOf(\PhpOffice\PhpSpreadsheet\RichText\RichText::class, $cellValue);
+        $this->assertEquals("Ancien Parcours\nNouveau Parcours", $cellValue->getPlainText());
+        $this->assertTrue($sheet->getStyle('A1')->getAlignment()->getWrapText());
+
+        $elements = $cellValue->getRichTextElements();
+        $this->assertCount(3, $elements); // Old (Run), \n (Run), New (Run)
+        
+        $this->assertTrue($elements[0]->getFont()->getStrikethrough());
+        $this->assertEquals('FFDC2626', $elements[0]->getFont()->getColor()->getARGB());
+
+        $this->assertTrue($elements[2]->getFont()->getBold());
+        $this->assertEquals('FF16A34A', $elements[2]->getFont()->getColor()->getARGB());
+    }
+
+    public function testDataXlsDiffAttribute(): void
+    {
+        $html = '<table data-xls-sheet="Test">
+            <tr>
+                <td data-xls-diff-original="Ancien" data-xls-diff-new="Nouveau"></td>
+            </tr>
+        </table>';
+
+        $spreadsheet = $this->interpreter->fromHtml($html);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $cellValue = $sheet->getCell('A1')->getValue();
+        $this->assertInstanceOf(\PhpOffice\PhpSpreadsheet\RichText\RichText::class, $cellValue);
+        $this->assertEquals("Ancien\nNouveau", $cellValue->getPlainText());
+        $this->assertTrue($sheet->getStyle('A1')->getAlignment()->getWrapText());
     }
 }

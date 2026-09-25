@@ -169,6 +169,16 @@ final class HtmlTableInterpreter
                     (int)($cellNode->getAttribute('data-xls-img-width') ?: 0),
                     (int)($cellNode->getAttribute('data-xls-img-height') ?: 0)
                 );
+            } elseif ($cellNode->hasAttribute('data-xls-diff-original') || $cellNode->hasAttribute('data-xls-diff-new') || $cellNode->getAttribute('data-xls-diff') === 'true') {
+                $orig = $cellNode->getAttribute('data-xls-diff-original');
+                $new = $cellNode->hasAttribute('data-xls-diff-new') ? $cellNode->getAttribute('data-xls-diff-new') : trim($cellNode->textContent);
+                $this->applyDiffCell($sheet, $coord, $orig, $new, $cellNode);
+            } elseif ($this->hasRichTextChildren($cellNode)) {
+                $richText = new \PhpOffice\PhpSpreadsheet\RichText\RichText();
+                foreach ($cellNode->childNodes as $child) {
+                    $this->parseRichTextNode($child, $richText, [], $sheet, $coord);
+                }
+                $sheet->setCellValue($coord, $richText);
             } else {
                 $typed = $this->castValue($value, $forcedType, $numberLocale);
                 // Si le type est forcé à 'string', utiliser setCellValueExplicit pour éviter la conversion automatique
@@ -545,5 +555,199 @@ final class HtmlTableInterpreter
         $sheetName = trim($sheetName) ?: 'Sheet';
         $sheetName = mb_substr($sheetName, 0, 31, 'UTF-8');
         return $sheetName;
+    }
+
+    private function applyDiffCell(Worksheet $sheet, string $coord, ?string $original, ?string $new, \DOMElement $cellNode): void
+    {
+        $hasOrig = $original !== null && $original !== '';
+        $hasNew = $new !== null && $new !== '';
+
+        if ($hasOrig && $hasNew && $original !== $new) {
+            $richText = new \PhpOffice\PhpSpreadsheet\RichText\RichText();
+
+            // Ancien libellé barré rouge
+            $oldRun = $richText->createTextRun($original);
+            $oldRun->getFont()?->setStrikethrough(true);
+            $oldColor = $cellNode->getAttribute('data-xls-diff-old-color') ?: 'DC2626';
+            $oldRun->getFont()?->getColor()->setRGB(ltrim($oldColor, '#'));
+
+            // Saut de ligne
+            $richText->createTextRun("\n");
+            $sheet->getStyle($coord)->getAlignment()->setWrapText(true);
+
+            // Nouveau libellé gras vert
+            $newRun = $richText->createTextRun($new);
+            $newRun->getFont()?->setBold(true);
+            $newColor = $cellNode->getAttribute('data-xls-diff-new-color') ?: '16A34A';
+            $newRun->getFont()?->getColor()->setRGB(ltrim($newColor, '#'));
+
+            $sheet->setCellValue($coord, $richText);
+        } else {
+            $value = $hasNew ? $new : ($original ?? '');
+            $sheet->setCellValue($coord, $value);
+        }
+    }
+
+    private function hasRichTextChildren(\DOMElement $cellNode): bool
+    {
+        foreach ($cellNode->childNodes as $child) {
+            if ($child instanceof \DOMElement) {
+                $tag = strtolower($child->tagName);
+                if (in_array($tag, ['s', 'del', 'strike', 'b', 'strong', 'i', 'em', 'u', 'ins', 'br', 'span', 'font', 'small', 'p', 'div', 'diff'], true)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function parseRichTextNode(
+        \DOMNode $node,
+        \PhpOffice\PhpSpreadsheet\RichText\RichText $richText,
+        array $currentStyle,
+        Worksheet $sheet,
+        string $coord
+    ): void {
+        if ($node instanceof \DOMText) {
+            $text = $node->nodeValue;
+            if ($text === null || $text === '') {
+                return;
+            }
+
+            // Ignorer les retours à la ligne / espaces d'indentation Twig purs en dehors de tout style
+            if (!$this->hasActiveFormatting($currentStyle) && trim($text) === '') {
+                if (str_contains($text, "\n")) {
+                    return;
+                }
+            }
+
+            if ($this->hasActiveFormatting($currentStyle)) {
+                $run = $richText->createTextRun($text);
+                $font = $run->getFont();
+                if ($font !== null) {
+                    if (!empty($currentStyle['bold'])) {
+                        $font->setBold(true);
+                    }
+                    if (!empty($currentStyle['italic'])) {
+                        $font->setItalic(true);
+                    }
+                    if (!empty($currentStyle['strikethrough'])) {
+                        $font->setStrikethrough(true);
+                    }
+                    if (!empty($currentStyle['underline'])) {
+                        $font->setUnderline(\PhpOffice\PhpSpreadsheet\Style\Font::UNDERLINE_SINGLE);
+                    }
+                    if (!empty($currentStyle['color'])) {
+                        $colorHex = ltrim($currentStyle['color'], '#');
+                        if (strlen($colorHex) === 8) {
+                            $font->getColor()->setARGB($colorHex);
+                        } else {
+                            $font->getColor()->setRGB($colorHex);
+                        }
+                    }
+                    if (!empty($currentStyle['size'])) {
+                        $font->setSize((float)$currentStyle['size']);
+                    }
+                    if (!empty($currentStyle['fontName'])) {
+                        $font->setName($currentStyle['fontName']);
+                    }
+                }
+            } else {
+                $richText->createText($text);
+            }
+            return;
+        }
+
+        if ($node instanceof \DOMElement) {
+            $tag = strtolower($node->tagName);
+
+            if ($tag === 'br') {
+                $richText->createTextRun("\n");
+                $sheet->getStyle($coord)->getAlignment()->setWrapText(true);
+                return;
+            }
+
+            if ($tag === 'diff') {
+                $orig = $node->getAttribute('original') ?: $node->getAttribute('data-original');
+                $new = $node->getAttribute('new') ?: $node->getAttribute('data-new');
+                if ($orig !== '' && $new !== '' && $orig !== $new) {
+                    $oldRun = $richText->createTextRun($orig);
+                    $oldRun->getFont()?->setStrikethrough(true);
+                    $oldRun->getFont()?->getColor()->setRGB('DC2626');
+
+                    $richText->createTextRun("\n");
+                    $sheet->getStyle($coord)->getAlignment()->setWrapText(true);
+
+                    $newRun = $richText->createTextRun($new);
+                    $newRun->getFont()?->setBold(true);
+                    $newRun->getFont()?->getColor()->setRGB('16A34A');
+                    return;
+                } else {
+                    $richText->createText($new ?: $orig ?: '');
+                    return;
+                }
+            }
+
+            $childStyle = $currentStyle;
+
+            if (in_array($tag, ['s', 'del', 'strike'], true)) {
+                $childStyle['strikethrough'] = true;
+                if (empty($childStyle['color']) && !$node->hasAttribute('data-xls-font-color') && !$node->hasAttribute('color')) {
+                    $childStyle['color'] = 'DC2626';
+                }
+            } elseif (in_array($tag, ['b', 'strong'], true)) {
+                $childStyle['bold'] = true;
+                if (empty($childStyle['color']) && !$node->hasAttribute('data-xls-font-color') && !$node->hasAttribute('color') && ($currentStyle['diffNew'] ?? false)) {
+                    $childStyle['color'] = '16A34A';
+                }
+            } elseif (in_array($tag, ['i', 'em'], true)) {
+                $childStyle['italic'] = true;
+            } elseif (in_array($tag, ['u', 'ins'], true)) {
+                $childStyle['underline'] = true;
+            }
+
+            if ($node->hasAttribute('data-xls-font-color')) {
+                $childStyle['color'] = $node->getAttribute('data-xls-font-color');
+            } elseif ($node->hasAttribute('color')) {
+                $childStyle['color'] = $node->getAttribute('color');
+            }
+
+            if ($node->hasAttribute('data-xls-font-bold')) {
+                $childStyle['bold'] = $node->getAttribute('data-xls-font-bold') === 'true';
+            }
+
+            if ($node->hasAttribute('data-xls-font-italic')) {
+                $childStyle['italic'] = $node->getAttribute('data-xls-font-italic') === 'true';
+            }
+
+            if ($node->hasAttribute('data-xls-font-strike') || $node->hasAttribute('data-xls-strike')) {
+                $val = $node->getAttribute('data-xls-font-strike') ?: $node->getAttribute('data-xls-strike');
+                $childStyle['strikethrough'] = $val === 'true';
+            }
+
+            if ($node->hasAttribute('data-xls-font-size')) {
+                $childStyle['size'] = (float)$node->getAttribute('data-xls-font-size');
+            }
+
+            if ($node->hasAttribute('data-xls-font-name')) {
+                $childStyle['fontName'] = $node->getAttribute('data-xls-font-name');
+            }
+
+            foreach ($node->childNodes as $child) {
+                $this->parseRichTextNode($child, $richText, $childStyle, $sheet, $coord);
+            }
+        }
+    }
+
+    private function hasActiveFormatting(array $style): bool
+    {
+        return !empty($style['bold'])
+            || !empty($style['italic'])
+            || !empty($style['strikethrough'])
+            || !empty($style['underline'])
+            || !empty($style['color'])
+            || !empty($style['size'])
+            || !empty($style['fontName']);
     }
 }

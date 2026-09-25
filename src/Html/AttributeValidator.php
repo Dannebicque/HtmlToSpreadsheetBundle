@@ -29,7 +29,10 @@ final class AttributeValidator
             'data-xls-border-color'=>true,'data-xls-locked'=>true,
             // Priority 2 attributes - Font styling
             'data-xls-font-color'=>true,'data-xls-font-bold'=>true,'data-xls-font-italic'=>true,
-            'data-xls-font-underline'=>true,'data-xls-font-name'=>true,
+            'data-xls-font-underline'=>true,'data-xls-font-name'=>true,'data-xls-font-strike'=>true,'data-xls-strike'=>true,
+            // Diff attributes
+            'data-xls-diff'=>true,'data-xls-diff-original'=>true,'data-xls-diff-new'=>true,
+            'data-xls-diff-old-color'=>true,'data-xls-diff-new-color'=>true,
             // Priority 2 attributes - Conditional formatting
             'data-xls-conditional'=>true,
             // Priority 3 attributes - Hyperlinks
